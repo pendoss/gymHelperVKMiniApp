@@ -182,6 +182,7 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }) => {
                     last_name: friend.last_name,
                     photo_200: friend.photo_200,
                     level: "amateur",
+                    firstLogin: false,
                 },
                 status: "pending",
                 invitedAt: new Date(),

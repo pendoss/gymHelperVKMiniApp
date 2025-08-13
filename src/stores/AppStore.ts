@@ -1,5 +1,5 @@
 import { makeAutoObservable } from 'mobx';
-import { Exercise, Workout, Friend } from '../types';
+import { Exercise, Workout, Friend, User } from '../types';
 
 export interface Achievements {
   totalWorkouts: number;
@@ -268,6 +268,9 @@ class AppStore {
     },
   ];
 
+  currentUser: User | null = null;
+  showOnBoardingModal: boolean = false;
+
   selectedDate: Date = new Date();
   theme: Theme = { mode: 'light' };
   pendingExerciseForWorkout: {
@@ -442,6 +445,75 @@ class AppStore {
     const allEquipment = this.exercises.flatMap(exercise => exercise.equipment || []);
     const uniqueEquipment = [...new Set(allEquipment)];
     return uniqueEquipment.sort();
+  };
+
+  // Методы для работы с пользователем
+  setCurrentUser = (user: User) => {
+    this.currentUser = user;
+    // Проверяем, если это первый вход пользователя
+    if (user.firstLogin) {
+      this.showOnBoardingModal = true;
+    }
+  };
+
+  updateCurrentUser = (updates: Partial<User>) => {
+    if (this.currentUser) {
+      this.currentUser = { ...this.currentUser, ...updates };
+    }
+  };
+
+  setMainGym = (gymName: string) => {
+    if (this.currentUser) {
+      this.currentUser.mainGym = gymName;
+    }
+  };
+
+  clearCurrentUser = () => {
+    this.currentUser = null;
+  };
+
+  // Методы для работы с OnBoardingModal
+  setShowOnBoardingModal = (show: boolean) => {
+    this.showOnBoardingModal = show;
+  };
+
+  checkAndShowOnBoarding = () => {
+    if (this.currentUser && this.currentUser.firstLogin) {
+      this.showOnBoardingModal = true;
+    }
+  };
+
+  // Получить персонализированные рекомендации
+  getPersonalizedRecommendations = () => {
+    if (!this.currentUser) return [];
+
+    const recommendations = [];
+    const { level, mainGym } = this.currentUser;
+    const { totalWorkouts, currentStreak } = this.achievements;
+
+    // Рекомендации по уровню
+    if (level === 'beginner' && totalWorkouts < 5) {
+      recommendations.push("Начните с базовых упражнений: жим лежа, приседания и становая тяга");
+    }
+
+    // Рекомендации по основному залу
+    if (mainGym) {
+      const gymWorkouts = this.workouts.filter(w => w.gym === mainGym).length;
+      if (gymWorkouts > 10) {
+        recommendations.push(`Отличная привязанность к залу ${mainGym}! Вы провели здесь ${gymWorkouts} тренировок`);
+      }
+    } else {
+      recommendations.push("Выберите основной спортзал для персонализированных рекомендаций");
+    }
+
+    // Рекомендации по регулярности
+    if (currentStreak > 7) {
+      recommendations.push(`Потрясающая регулярность! ${currentStreak} дней подряд - так держать!`);
+    } else if (currentStreak === 0) {
+      recommendations.push("Время возвращаться к тренировкам! Начните с легкой разминки");
+    }
+
+    return recommendations;
   };
 }
 

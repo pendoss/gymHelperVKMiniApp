@@ -3,6 +3,7 @@ import { useAdaptivity, useAppearance, useInsets } from '@vkontakte/vk-bridge-re
 import { AdaptivityProvider, ConfigProvider, AppRoot } from '@vkontakte/vkui';
 import { RouterProvider } from '@vkontakte/vk-mini-apps-router';
 import '@vkontakte/vkui/dist/vkui.css';
+import './styles/theme.css';
 
 import { transformVKBridgeAdaptivity } from './utils';
 import { router } from './routes';
@@ -12,7 +13,14 @@ export const AppConfig = () => {
   const vkBridgeAppearance = useAppearance() || undefined;
   const vkBridgeInsets = useInsets() || undefined;
   const adaptivity = transformVKBridgeAdaptivity(useAdaptivity());
-  const { vk_platform } = parseURLSearchParamsForGetLaunchParams(window.location.search);
+  
+  let vk_platform = undefined;
+  try {
+    const searchParams = parseURLSearchParamsForGetLaunchParams(window.location.search);
+    vk_platform = searchParams.vk_platform;
+  } catch (error) {
+    console.warn('Error parsing VK launch params:', error);
+  }
 
   return (
     <ConfigProvider

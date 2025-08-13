@@ -1,0 +1,113 @@
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.calendar-weekday {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  color: var(--vkui--color_text_secondary);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+
+.calendar-day:hover {
+  background: #008a45be;
+  transform: scale(1.05);
+  z-index: 2;
+}
+
+.calendar-day.other-month {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Сегодняшняя дата всегда синего цвета */
+.calendar-grid .calendar-day.today {
+  background: var(--vkui--color_accent, #5181b8) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border: none !important;
+}
+
+.calendar-grid .calendar-day.today:hover {
+  background: var(--vkui--color_accent_hover, #4d8ce0) !important;
+  color: white !important;
+  transform: scale(1.05);
+}
+
+.calendar-day.calendar-day--has-workout {
+  background: rgba(0, 255, 127, 0.1);
+  border: 2px solid rgba(0, 255, 127, 0.3);
+}
+
+.calendar-day.calendar-day--has-workout:hover {
+  background: rgba(0, 255, 127, 0.25);
+  border-color: rgba(0, 255, 127, 0.6);
+  transform: scale(1.05);
+}
+
+.calendar-grid .calendar-day.today.calendar-day--has-workout {
+  background: var(--vkui--color_accent, #5181b8) !important;
+  color: white !important;
+  border: 2px solid #00ff7f !important;
+}
+
+.workout-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff7f;
+  box-shadow: 0 0 4px rgba(0, 255, 127, 0.6);
+}
+
+/* Для сегодняшней даты индикатор белый */
+.calendar-day.today .workout-indicator {
+  background: white;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 768px) {
+  .calendar-day {
+    min-height: 35px;
+    font-size: 14px;
+  }
+  
+  .workout-indicator {
+    width: 4px;
+    height: 4px;
+  }
+}

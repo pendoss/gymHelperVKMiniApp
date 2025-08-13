@@ -1,4 +1,18 @@
 export { Persik } from './Persik';
 export { Home } from './Home';
+export { ExerciseLibrary } from './ExerciseLibrary';
+export { ExerciseDetail } from './ExerciseDetail';
+export { ExerciseEdit } from './ExerciseEdit';
+export { WorkoutDetail } from './WorkoutDetail';
+export { WorkoutCreate } from './WorkoutCreate';
+export { WorkoutEdit } from './WorkoutEdit';
+export { Profile } from './Profile';
 
 export type { HomeProps } from './Home';
+export type { ExerciseLibraryProps } from './ExerciseLibrary';
+export type { ExerciseDetailProps } from './ExerciseDetail';
+export type { ExerciseEditProps } from './ExerciseEdit';
+export type { WorkoutDetailProps } from './WorkoutDetail';
+export type { WorkoutCreateProps } from './WorkoutCreate';
+export type { WorkoutEditProps } from './WorkoutEdit';
+export type { ProfileProps } from './Profile';

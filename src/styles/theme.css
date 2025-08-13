@@ -1,0 +1,368 @@
+/* TrainSync App Custom Theme */
+
+:root {
+  /* Основные зеленые цвета */
+  --vkui--color_accent--light: #4CAF50;
+  --vkui--color_accent--dark: #66BB6A;
+  --vkui--color_accent_themed--light: #4CAF50;
+  --vkui--color_accent_themed--dark: #66BB6A;
+  
+  /* Градиенты */
+  --train-sync-gradient: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+  --train-sync-gradient-dark: linear-gradient(135deg, #388E3C 0%, #4CAF50 100%);
+  
+  /* Дополнительные зеленые оттенки */
+  --train-sync-primary: #4CAF50;
+  --train-sync-primary-dark: #388E3C;
+  --train-sync-primary-light: #C8E6C9;
+  --train-sync-secondary: #66BB6A;
+  --train-sync-success: #2E7D32;
+  --train-sync-info: #00695C;
+}
+
+/* Светлая тема */
+.vkui--vkBase--light {
+  --vkui--color_accent: #4CAF50;
+  --vkui--color_accent_themed: #4CAF50;
+  --vkui--color_accent_secondary: #C8E6C9;
+  --vkui--color_accent_secondary_alpha: rgba(76, 175, 80, 0.12);
+}
+
+/* Темная тема */
+.vkui--vkBase--dark {
+  --vkui--color_accent: #66BB6A;
+  --vkui--color_accent_themed: #66BB6A;
+  --vkui--color_accent_secondary: #2E7D32;
+  --vkui--color_accent_secondary_alpha: rgba(102, 187, 106, 0.12);
+}
+
+/* Кастомные классы для компонентов */
+.train-sync-gradient-bg {
+  background: var(--train-sync-gradient);
+}
+
+.train-sync-gradient-text {
+  background: var(--train-sync-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+}
+
+.train-sync-accent {
+  color: var(--vkui--color_accent);
+}
+
+.train-sync-accent-bg {
+  background-color: var(--vkui--color_accent);
+  color: white;
+}
+
+/* Кнопки с акцентом */
+.Button--mode-primary {
+  background: var(--train-sync-gradient) !important;
+  border: none !important;
+}
+
+.Button--mode-primary:hover {
+  background: var(--train-sync-gradient-dark) !important;
+}
+
+/* Иконки навигации */
+.Tabbar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  background: var(--vkui--color_background_content) !important;
+  border-top: 1px solid var(--vkui--color_separator_primary) !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.Tabbar .TabbarItem--selected {
+  color: var(--vkui--color_accent) !important;
+}
+
+/* Календарь */
+.calendar-day--has-workout {
+  background: var(--train-sync-gradient) !important;
+  color: white !important;
+  border-radius: 50%;
+}
+
+.calendar-day--selected {
+  background: var(--vkui--color_accent_secondary) !important;
+  color: var(--vkui--color_accent) !important;
+  border: 2px solid var(--vkui--color_accent) !important;
+}
+
+/* Карточки тренировок */
+.workout-card {
+  border-left: 4px solid var(--vkui--color_accent);
+}
+
+.workout-card--active {
+  background: var(--vkui--color_accent_secondary_alpha);
+  border-color: var(--vkui--color_accent);
+}
+
+/* Карточки упражнений */
+.exercise-card:hover {
+  border-color: var(--vkui--color_accent);
+  box-shadow: 0 2px 8px var(--vkui--color_accent_secondary_alpha);
+}
+
+/* Модальные окна */
+.Modal .ModalHeader {
+  background: var(--train-sync-gradient);
+  color: white;
+}
+
+/* Прогресс бары */
+.Progress {
+  background-color: var(--vkui--color_accent) !important;
+}
+
+/* Статистика */
+.stats-card {
+  background: var(--train-sync-gradient);
+  color: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(76, 175, 80, 0.35);
+}
+
+.stats-number {
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.stats-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Улучшенные карточки */
+.enhanced-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--vkui--color_separator_primary);
+  background: var(--vkui--color_background_content);
+}
+
+.enhanced-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--vkui--color_accent);
+}
+
+/* Календарь без hover эффекта на карточку */
+.enhanced-card.calendar-container:hover {
+  transform: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-color: var(--vkui--color_separator_primary);
+}
+
+/* Отдельные карточки без hover эффекта на весь блок */
+.stats-card-individual {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--vkui--color_separator_primary);
+  background: var(--vkui--color_background_content);
+}
+
+.stats-card-individual:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--vkui--color_accent);
+}
+
+/* Календарь - hover только на дни */
+.calendar-day {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  border-radius: 8px;
+}
+
+.calendar-day:hover {
+  background-color: var(--vkui--color_accent_secondary_alpha);
+  transform: scale(1.05);
+}
+
+/* Улучшенные ячейки */
+.enhanced-cell {
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: var(--vkui--color_background_content);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--vkui--color_separator_primary_alpha);
+  transition: all 0.2s ease;
+}
+
+.enhanced-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-color: var(--vkui--color_accent_secondary);
+}
+
+/* Улучшенные группы */
+.enhanced-group {
+  margin-bottom: 16px;
+}
+
+.enhanced-group .Group__in {
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--vkui--color_separator_primary_alpha);
+}
+
+/* Улучшенные кнопки */
+.enhanced-button {
+  border-radius: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.25);
+  transition: all 0.2s ease;
+}
+
+.enhanced-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.35);
+}
+
+/* Улучшенные заголовки */
+.enhanced-header {
+  font-weight: 600;
+  color: var(--vkui--color_text_primary);
+  margin-bottom: 8px;
+}
+
+/* Кастомные анимации */
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+.pulse-green {
+  animation: pulse-green 2s infinite;
+}
+
+/* Адаптивные размеры */
+@media (max-width: 768px) {
+  .stats-card {
+    padding: 12px;
+  }
+  
+  .stats-number {
+    font-size: 20px;
+  }
+}
+
+/* Улучшения для VKUI компонентов */
+.vkui--Group--mode-plain {
+  margin-bottom: 16px;
+}
+
+.vkui--Group--mode-plain > .Group__in {
+  background: var(--vkui--color_background_content);
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--vkui--color_separator_primary_alpha);
+  overflow: hidden;
+}
+
+.vkui--Cell {
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.vkui--Cell:hover {
+  background-color: var(--vkui--color_background_secondary);
+}
+
+.vkui--Card--mode-outline {
+  border-radius: 16px;
+  border: 1px solid var(--vkui--color_separator_primary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  /* Убираем hover эффект для календаря */
+}
+
+.vkui--Card--mode-outline.enhanced-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--vkui--color_accent_secondary);
+}
+
+.vkui--Button--size-l {
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  min-height: 48px;
+  transition: all 0.2s ease;
+}
+
+.vkui--Button--size-l:hover {
+  transform: translateY(-1px);
+}
+
+.vkui--Search .Search__input {
+  border-radius: 12px;
+  border: 1px solid var(--vkui--color_separator_primary);
+  transition: all 0.2s ease;
+}
+
+.vkui--Search .Search__input:focus {
+  border-color: var(--vkui--color_accent);
+  box-shadow: 0 0 0 3px var(--vkui--color_accent_secondary_alpha);
+}
+
+.vkui--TabsItem {
+  border-radius: 8px;
+  margin: 0 4px;
+  transition: all 0.2s ease;
+}
+
+.vkui--TabsItem--selected {
+  background: var(--vkui--color_accent_secondary_alpha);
+  color: var(--vkui--color_accent);
+}
+
+.vkui--Avatar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.vkui--Chip {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Специальные классы для улучшения внешнего вида */
+.elevated-surface {
+  background: var(--vkui--color_background_content);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--vkui--color_separator_primary_alpha);
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.elevated-surface:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}

@@ -215,6 +215,7 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
           last_name: friend.last_name,
           photo_200: friend.photo_200,
           level: 'amateur',
+          firstLogin: false,
         },
         status: 'pending' as const,
         invitedAt: new Date(),

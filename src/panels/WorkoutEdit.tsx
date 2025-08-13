@@ -21,7 +21,6 @@ import {
     PanelHeaderButton,
     Header,
     Chip,
-    Badge,
     IconButton,
     Tabs,
     TabsItem,
@@ -182,6 +181,7 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }) => {
                     last_name: friend.last_name,
                     photo_200: friend.photo_200,
                     level: "amateur",
+                    firstLogin: false,
                 },
                 status: "pending",
                 invitedAt: new Date(),
@@ -508,9 +508,9 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }) => {
                                                         </Text>
                                                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                                             {exerciseSets[exercise.id].map((set, index) => (
-                                                                <Badge key={index} style={{ fontSize: 11 }}>
+                                                                <Chip key={index} removable={false} style={{ fontSize: 11 }}>
                                                                     {set.reps}×{set.weight}кг
-                                                                </Badge>
+                                                                </Chip>
                                                             ))}
                                                         </div>
                                                     </div>

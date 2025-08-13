@@ -8,6 +8,8 @@ export interface User {
   };
   level: UserLevel;
   favoriteGym?: string;
+  mainGym?: string;
+  firstLogin: boolean;
 }
 
 export type UserLevel = 'beginner' | 'amateur' | 'advanced' | 'expert';

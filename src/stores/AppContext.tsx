@@ -70,6 +70,7 @@ const initialState: AppState = {
             last_name: 'Иванов',
             photo_200: 'https://via.placeholder.com/200',
             level: 'amateur',
+            firstLogin: false
           },
           status: 'accepted',
           invitedAt: new Date(),
@@ -287,7 +288,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const setLoading = (loading: boolean) => {
     setState(prev => ({ ...prev, isLoading: loading }));
   };
-  
+
   useEffect(() => {
     const now = new Date();
     const currentMonth = now.getMonth();

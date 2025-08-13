@@ -13,6 +13,9 @@ import {
     NavIdProps,
     Chip,
     Spacing,
+    FormItem,
+    Input,
+    Button,
 } from "@vkontakte/vkui";
 import { observer } from "mobx-react-lite";
 import { FriendCard } from "../components/FriendCard";
@@ -28,10 +31,46 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     const store = useStore();
     const [friendSearch, setFriendSearch] = useState("");
     const [friendFilter, setFriendFilter] = useState("all");
+    const [isEditingGym, setIsEditingGym] = useState(false);
+    const [newMainGym, setNewMainGym] = useState(store.currentUser?.mainGym || "");
 
     const { photo_200, first_name, last_name } = { ...fetchedUser };
 
+    const handleSaveMainGym = () => {
+        store.setMainGym(newMainGym);
+        setIsEditingGym(false);
+    };
+
+    const getPersonalizedGreeting = () => {
+        const user = store.currentUser;
+        if (!user) return "Добро пожаловать!";
+        
+        const timeOfDay = new Date().getHours();
+        let greeting = "";
+        
+        if (timeOfDay < 12) {
+            greeting = "Доброе утро";
+        } else if (timeOfDay < 18) {
+            greeting = "Добрый день";
+        } else {
+            greeting = "Добрый вечер";
+        }
+        
+        return `${greeting}, ${user.first_name}!`;
+    };
+
     const getUserLevel = () => {
+        if (store.currentUser?.level) {
+            switch (store.currentUser.level) {
+                case 'beginner': return 'Новичок';
+                case 'amateur': return 'Любитель';
+                case 'advanced': return 'Продвинутый';
+                case 'expert': return 'Эксперт';
+                default: return 'Новичок';
+            }
+        }
+        
+        // Fallback: определяем уровень по количеству тренировок
         const totalWorkouts = store.achievements.totalWorkouts;
         if (totalWorkouts < 10) return "Новичок";
         if (totalWorkouts < 50) return "Любитель";
@@ -78,7 +117,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     return (
         <Panel id={id}>
             <PanelHeader>Профиль</PanelHeader>
-            <Group header={<Header className="enhanced-header">Профиль</Header>} className="enhanced-group">
+            <Group header={<Header className="enhanced-header">{getPersonalizedGreeting()}</Header>} className="enhanced-group">
                 <Div>
                     <Card mode="outline" className="enhanced-card">
                         <Div>
@@ -86,7 +125,10 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                 <Avatar size={64} src={photo_200} />
                                 <div>
                                     <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
-                                        {first_name} {last_name}
+                                        {store.currentUser?.first_name || first_name} {store.currentUser?.last_name || last_name}
+                                    </div>
+                                    <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>
+                                        Основной зал: {store.currentUser?.mainGym || "Не выбран"}
                                     </div>
                                     <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>
                                         Самый частый зал: {getMostVisitedGym()}
@@ -134,6 +176,63 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                             </Div>
                         </Card>
                     </div>
+                </Div>
+            </Group>
+            <Group header={<Header className="enhanced-header">Настройки профиля</Header>} className="enhanced-group">
+                <Div>
+                    <Card mode="outline" className="enhanced-card">
+                        <Div>
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+                                    Основной спортзал
+                                </div>
+                                {isEditingGym ? (
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                                        <FormItem style={{ flex: 1 }}>
+                                            <Input
+                                                value={newMainGym}
+                                                onChange={(e) => setNewMainGym(e.target.value)}
+                                                placeholder="Название спортзала"
+                                            />
+                                        </FormItem>
+                                        <Button 
+                                            mode="primary" 
+                                            size="s"
+                                            onClick={handleSaveMainGym}
+                                        >
+                                            Сохранить
+                                        </Button>
+                                        <Button 
+                                            mode="secondary" 
+                                            size="s"
+                                            onClick={() => {
+                                                setIsEditingGym(false);
+                                                setNewMainGym(store.currentUser?.mainGym || "");
+                                            }}
+                                        >
+                                            Отмена
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14 }}>
+                                            {store.currentUser?.mainGym || "Не выбран"}
+                                        </Text>
+                                        <Button 
+                                            mode="secondary" 
+                                            size="s"
+                                            onClick={() => setIsEditingGym(true)}
+                                        >
+                                            Изменить
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ fontSize: 14, opacity: 0.7 }}>
+                                Выберите ваш основной спортзал для более удобного планирования тренировок
+                            </div>
+                        </Div>
+                    </Card>
                 </Div>
             </Group>
             <Group header={<Header className="enhanced-header">Друзья и тренировки</Header>} className="enhanced-group">

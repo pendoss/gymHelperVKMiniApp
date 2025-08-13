@@ -11,6 +11,7 @@ import {
   NavIdProps,
   Spacing,
   Chip,
+  Button,
 } from '@vkontakte/vkui';
 import {
   Icon28EditOutline,
@@ -182,6 +183,7 @@ const calculateExerciseStats = () => {
     }
   };
   //TODO: кнопку надо добавить к конце концов
+  //добавил
 //   const handleEdit = () => {
 //     routeNavigator.push('/exercise-edit');
 //   };
@@ -220,6 +222,14 @@ const calculateExerciseStats = () => {
         <Div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text weight="1" style={{ fontSize: 24 }}>{exercise.name}</Text>
+            <Button
+              size="s"
+              mode="secondary"
+              before={<Icon28EditOutline />}
+              onClick={() => routeNavigator.push(`/exercise-edit/${exerciseId}`)}
+              
+            >
+            </Button>
           </div>
           <Text style={{ fontSize: 16, opacity: 0.7 }}>{exercise.muscleGroup.join(', ')}</Text>
         </Div>

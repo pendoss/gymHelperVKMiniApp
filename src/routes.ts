@@ -34,7 +34,7 @@ export const routes = RoutesConfig.create([
       createPanel(DEFAULT_VIEW_PANELS.WORKOUT_DETAIL, `/${DEFAULT_VIEW_PANELS.WORKOUT_DETAIL}/:workoutId?`, []),
       createPanel(DEFAULT_VIEW_PANELS.WORKOUT_EDIT, `/${DEFAULT_VIEW_PANELS.WORKOUT_EDIT}/:workoutId?`, []),
       createPanel(DEFAULT_VIEW_PANELS.PROFILE, `/${DEFAULT_VIEW_PANELS.PROFILE}`, []),
-      createPanel(DEFAULT_VIEW_PANELS.EXERCISE_EDIT, `/${DEFAULT_VIEW_PANELS.EXERCISE_EDIT}`, []),
+      createPanel(DEFAULT_VIEW_PANELS.EXERCISE_EDIT, `/${DEFAULT_VIEW_PANELS.EXERCISE_EDIT}/:exerciseId?`, []),
       createPanel(DEFAULT_VIEW_PANELS.PERSIK, `/${DEFAULT_VIEW_PANELS.PERSIK}`, []),
     ]),
   ]),

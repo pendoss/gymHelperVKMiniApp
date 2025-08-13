@@ -40,6 +40,7 @@ export interface Exercise {
   maxWeight?: number; // максимальный рабочий вес
   steps: ExerciseStep[]; // пошаговая техника выполнения
   recommendations: ExerciseRecommendation[]; // рекомендации
+  defaultSets?: Set[]; // подходы по умолчанию для упражнения
   createdBy: number;
   createdAt: Date;
 }

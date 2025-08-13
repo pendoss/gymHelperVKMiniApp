@@ -94,7 +94,7 @@ export const SetSelector: FC<SetSelectorProps> = ({
                 onClick={() => setSelectedMode('existing')}
                 stretched
               >
-                Использовать готовые
+                Готовые
               </Button>
               <Button
                 size="m"

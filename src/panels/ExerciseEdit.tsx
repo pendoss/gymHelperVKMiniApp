@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import {
   Panel,
   PanelHeader,
@@ -54,7 +54,24 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [steps, setSteps] = useState<ExerciseStep[]>(existingExercise?.steps || []);
   const [recommendations, setRecommendations] = useState<ExerciseRecommendation[]>(existingExercise?.recommendations || []);
-  const [sets, setSets] = useState<ExerciseSet[]>([]);
+  const [sets, setSets] = useState<ExerciseSet[]>(
+    existingExercise?.defaultSets?.map(set => ({ ...set, id: set.id })) || []
+  );
+
+  // Инициализация данных при редактировании
+  useEffect(() => {
+    if (existingExercise) {
+      setExerciseName(existingExercise.name);
+      setCategories(existingExercise.muscleGroup || []);
+      setDescription(existingExercise.description || '');
+      setEquipment(existingExercise.equipment || []);
+      setRestTime(existingExercise.restTime?.toString() || '');
+      setVideoUrl(existingExercise.videoUrl || '');
+      setSteps(existingExercise.steps || []);
+      setRecommendations(existingExercise.recommendations || []);
+      setSets(existingExercise.defaultSets?.map(set => ({ ...set, id: set.id })) || []);
+    }
+  }, [existingExercise]);
   
   const existingCategories = store.getUniqueCategories();
   const defaultCategories = [
@@ -213,6 +230,13 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
       videoFile: videoFile || undefined,
       steps: steps.filter(step => step.description.trim() !== ''),
       recommendations: recommendations.filter(rec => rec.text.trim() !== ''),
+      defaultSets: sets.length > 0 ? sets.map(set => ({
+        id: set.id,
+        reps: set.reps,
+        weight: set.weight,
+        duration: set.duration,
+        distance: set.distance
+      })) : undefined,
       createdBy: 1,
       createdAt: existingExercise?.createdAt || new Date(),
     };
@@ -487,19 +511,6 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
         header={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
             <Header size="s">Рекомендации</Header>
-            <IconButton
-              onClick={addRecommendation}
-              style={{ 
-                background: 'var(--vkui--color_accent)', 
-                color: 'white',
-                borderRadius: '50%',
-                width: 32,
-                height: 32
-              }}
-              aria-label="Добавить рекомендацию"
-            >
-              <Icon28AddCircleOutline />
-            </IconButton>
           </div>
         }
       >
@@ -544,14 +555,14 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
         )}
         <div style={{display:"flex", justifyContent:"center"}}>
           <IconButton
-              onClick={addStep}
+              onClick={addRecommendation}
               style={{ 
                 background: 'var(--vkui--color_accent)', 
                 borderRadius: '50%',
                 width: 32,
                 height: 32,
               }}
-              aria-label="Добавить шаг"
+              aria-label="Добавить рекомендацию"
             >
               <Icon28AddCircleOutline color="#5181b8" />
               

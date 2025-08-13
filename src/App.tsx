@@ -55,7 +55,6 @@ const AppContent = observer(() => {
         };
         setUser(fallbackUser);
         
-        // Сохраняем fallback пользователя в store
         const fallbackUserData = {
           id: fallbackUser.id,
           first_name: fallbackUser.first_name,
@@ -90,8 +89,6 @@ const AppContent = observer(() => {
           <Persik id="persik" />
         </View>
         <NavBar/>
-        
-        {/* OnBoardingModal для первого входа */}
         <OnBoardingModal 
           isOpen={store.showOnBoardingModal} 
           onClose={() => {

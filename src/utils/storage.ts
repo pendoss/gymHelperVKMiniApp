@@ -1,6 +1,5 @@
 import { STORAGE_KEYS } from '../config/api';
 
-// Утилиты для работы с localStorage
 export class LocalStorage {
   static set<T>(key: string, value: T): void {
     try {
@@ -42,9 +41,7 @@ export class LocalStorage {
   }
 }
 
-// Специализированные методы для данных приложения
 export class AppStorage {
-  // Токен доступа
   static setAccessToken(token: string): void {
     LocalStorage.set(STORAGE_KEYS.ACCESS_TOKEN, token);
   }
@@ -57,7 +54,6 @@ export class AppStorage {
     LocalStorage.remove(STORAGE_KEYS.ACCESS_TOKEN);
   }
 
-  // Данные пользователя
   static setUserData(userData: any): void {
     LocalStorage.set(STORAGE_KEYS.USER_DATA, userData);
   }
@@ -70,7 +66,6 @@ export class AppStorage {
     LocalStorage.remove(STORAGE_KEYS.USER_DATA);
   }
 
-  // Тема приложения
   static setTheme(theme: 'light' | 'dark'): void {
     LocalStorage.set(STORAGE_KEYS.THEME, theme);
   }
@@ -79,7 +74,6 @@ export class AppStorage {
     return LocalStorage.get<'light' | 'dark'>(STORAGE_KEYS.THEME, 'light')!;
   }
 
-  // Время последней синхронизации
   static setLastSync(timestamp: number): void {
     LocalStorage.set(STORAGE_KEYS.LAST_SYNC, timestamp);
   }
@@ -88,21 +82,17 @@ export class AppStorage {
     return LocalStorage.get<number>(STORAGE_KEYS.LAST_SYNC);
   }
 
-  // Очистка всех данных приложения
   static clearAppData(): void {
     LocalStorage.remove(STORAGE_KEYS.ACCESS_TOKEN);
     LocalStorage.remove(STORAGE_KEYS.USER_DATA);
     LocalStorage.remove(STORAGE_KEYS.LAST_SYNC);
-    // Тему не очищаем, пусть остается
   }
 
-  // Проверка авторизации
   static isAuthenticated(): boolean {
     return !!this.getAccessToken();
   }
 }
 
-// Утилиты для кэширования данных
 export class CacheManager {
   private static CACHE_PREFIX = 'gym_helper_cache_';
   private static DEFAULT_TTL = 1000 * 60 * 5; // 5 минут
@@ -153,7 +143,6 @@ export class CacheManager {
     return this.get(key) !== null;
   }
 
-  // Кэш ключи для разных типов данных
   static KEYS = {
     EXERCISES: 'exercises',
     WORKOUTS: 'workouts',
@@ -163,7 +152,6 @@ export class CacheManager {
   } as const;
 }
 
-// Утилиты для работы с файлами
 export class FileUtils {
   static readFileAsDataURL(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -215,7 +203,6 @@ export class FileUtils {
   }
 }
 
-// Утилиты для работы с датами
 export class DateUtils {
   static formatForAPI(date: Date): string {
     return date.toISOString().split('T')[0]; // YYYY-MM-DD

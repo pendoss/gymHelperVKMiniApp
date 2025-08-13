@@ -52,7 +52,7 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
   };
 
   const handleEdit = () => {
-    routeNavigator.push(`/edit-workout/${workout.id}`);
+    routeNavigator.push(`/workout-edit/${workout.id}`);
   };
 
   const handleDelete = () => {

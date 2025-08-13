@@ -176,9 +176,9 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
                         ))}
                         {exercise.equipment && exercise.equipment.length > 0 && (
                           exercise.equipment.map((eq, index) => (
-                            <Badge key={`eq-${index}`} style={{ fontSize: 11, backgroundColor: 'var(--vkui--color_background_secondary)' }}>
+                            <Chip key={`eq-${index}`} removable={false} style={{ fontSize: 11, backgroundColor: 'var(--vkui--color_background_secondary)' }}>
                               {eq}
-                            </Badge>
+                            </Chip>
                           ))
                         )}
                       </div>

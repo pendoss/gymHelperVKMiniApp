@@ -1,15 +1,12 @@
 import { FC, useState } from 'react';
 import { Card, Text, Div, Button, Avatar, Spacing } from '@vkontakte/vkui';
 import {
-  Icon28EditOutline,
-  Icon28DeleteOutline,
   Icon28ChevronDownOutline,
   Icon28ChevronUpOutline,
   Icon28InfoOutline,
   Icon28UsersOutline,
 } from '@vkontakte/icons';
-import { Workout } from '../types';
-import { useStore } from '../stores/StoreContext';
+import { Workout, WorkoutExercise, ExerciseSet } from '../types/api';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { observer } from 'mobx-react-lite';
 import { InviteFriendsModal } from './InviteFriendsModal';
@@ -22,47 +19,16 @@ interface WorkoutCardProps {
 export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable = true }) => {
   const [expanded, setExpanded] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const store = useStore();
   const routeNavigator = useRouteNavigator();
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('ru', {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ru', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   };
 
-  const getParticipantStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return '#4CAF50';
-      case 'pending': return '#FF9800';
-      case 'declined': return '#F44336';
-      case 'in_progress': return '#2196F3';
-      default: return '#9E9E9E';
-    }
-  };
-
-  const getParticipantStatusText = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'Принял';
-      case 'pending': return 'Ожидает';
-      case 'declined': return 'Отклонил';
-      case 'in_progress': return 'В процессе';
-      case 'completed': return 'Завершил';
-      default: return status;
-    }
-  };
-
-  const handleEdit = () => {
-    routeNavigator.push(`/workout-edit/${workout.id}`);
-  };
-
-  const handleDelete = () => {
-    if (confirm('Вы уверены, что хотите удалить эту тренировку?')) {
-      store.deleteUserWorkout(workout.id);
-    }
-  };
 
   const handleClick = () => {
     if (expandable) {
@@ -93,10 +59,10 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
               {workout.title}
             </Text>
             <Text style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>
-              {formatDate(workout.date)} • {workout.time}
+              {formatDate(workout.date)} • {workout.startTime || '00:00'}
             </Text>
             <Text style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>
-              {workout.gym} • {workout.exercises.length} упражнений
+              {workout.location || 'Место не указано'} • {workout.exercises.length} упражнений
             </Text>
             {workout.participants.length > 0 && (
               <Text style={{ fontSize: 14, opacity: 0.7 }}>
@@ -131,7 +97,6 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
           <>
             <Spacing size={16} />
             
-            {/* Кнопки управления */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <Button 
                 size="m" 
@@ -145,28 +110,6 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
               >
                 Пригласить друзей
               </Button>
-              <Button 
-                size="m" 
-                mode="secondary" 
-                before={<Icon28EditOutline />} 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit();
-                }}
-              >
-                Редактировать
-              </Button>
-              <Button 
-                size="m" 
-                mode="secondary" 
-                before={<Icon28DeleteOutline />} 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-              >
-                Удалить
-              </Button>
             </div>
             
             {/* Упражнения */}
@@ -174,7 +117,7 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
               <Text weight="2" style={{ marginBottom: 8, fontSize: 16 }}>
                 Упражнения:
               </Text>
-              {workout.exercises.map((workoutExercise, index) => (
+              {workout.exercises.map((workoutExercise: WorkoutExercise, index: number) => (
                 <div
                   key={workoutExercise.exerciseId}
                   style={{
@@ -193,7 +136,7 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
                   
                   {/* Показываем подходы */}
                   <div style={{ marginTop: 8 }}>
-                    {workoutExercise.sets.map((set, setIndex) => (
+                    {workoutExercise.sets.map((set: ExerciseSet, setIndex: number) => (
                       <Text key={set.id} style={{ fontSize: 13, opacity: 0.8, display: 'block' }}>
                         Подход {setIndex + 1}: {set.reps ? `${set.reps} повторений` : ''} 
                         {set.weight ? ` × ${set.weight} кг` : ''}
@@ -225,7 +168,7 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
                 <Text weight="2" style={{ marginBottom: 8, fontSize: 16 }}>
                   Участники ({workout.participants.length}):
                 </Text>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {workout.participants.map((participant) => (
                     <div
                       key={participant.userId}
@@ -240,26 +183,25 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
                     >
                       <Avatar size={36} src={participant.user.photo_200} />
                       <div style={{ flex: 1 }}>
-                        <Text weight="2" style={{ fontSize: 14 }}>
+                        <Text weight="2" style={{ fontSize: 16, marginBottom: 2 }}>
                           {participant.user.first_name} {participant.user.last_name}
                         </Text>
-                        <Text style={{ fontSize: 12, opacity: 0.7 }}>
-                          Приглашен: {new Date(participant.invitedAt).toLocaleDateString('ru-RU')}
+                        <Text style={{ fontSize: 14, opacity: 0.7 }}>
+                          Статус: {participant.status}
                         </Text>
                       </div>
-                      <div
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: 12,
-                          backgroundColor: getParticipantStatusColor(participant.status),
-                          color: 'white',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          textAlign: 'center',
-                          minWidth: 80,
-                        }}
-                      >
-                        {getParticipantStatusText(participant.status)}
+                      <div style={{
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        background: participant.status === 'accepted' 
+                          ? 'var(--vkui--color_accent_green)' 
+                          : 'var(--vkui--color_accent_orange)',
+                        color: 'white'
+                      }}>
+                        {participant.status === 'accepted' ? 'Принял' : 
+                         participant.status === 'pending' ? 'Ожидает' : 
+                         participant.status === 'declined' ? 'Отклонил' : participant.status}
                       </div>
                     </div>
                   ))}

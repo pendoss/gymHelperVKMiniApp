@@ -19,7 +19,8 @@ import { FriendCard } from '../components/FriendCard';
 import { NavBar } from '../components/NavBar';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
-import { Exercise, Friend, WorkoutExercise, WorkoutParticipant, Set } from '../types';
+import { Friend, WorkoutParticipant } from '../types';
+import { Exercise, ExerciseSet, WorkoutExercise } from '../types/api';
 import { observer } from 'mobx-react-lite';
 
 export interface WorkoutCreateProps extends NavIdProps {}
@@ -36,7 +37,7 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
   const [gym, setGym] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [selectedFriends, setSelectedFriends] = useState<Friend[]>([]);
-  const [exerciseSets, setExerciseSets] = useState<Record<string, Set[]>>({});
+  const [exerciseSets, setExerciseSets] = useState<Record<string, ExerciseSet[]>>({});
   const [friendSearch, setFriendSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'exercises' | 'friends'>('exercises');
   const [isCreating, setIsCreating] = useState(false);
@@ -59,34 +60,34 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
     }
   }, [store.pendingExerciseForWorkout, selectedExercises]);
 
-  const filteredFriends = store.friends.filter(friend =>
+  const filteredFriends = store.friends.filter((friend: any) =>
     `${friend.first_name} ${friend.last_name}`.toLowerCase().includes(friendSearch.toLowerCase()) &&
     !selectedFriends.find(selected => selected.id === friend.id)
   );
 
-  const handleExerciseAdd = (exercise: Exercise, sets: Set[]) => {
-    setSelectedExercises(prev => [...prev, exercise]);
-    setExerciseSets(prev => ({
-      ...prev,
-      [exercise.id]: sets
-    }));
-  };
+  // const handleExerciseAdd = (exercise: Exercise, sets: Set[]) => {
+  //   setSelectedExercises(prev => [...prev, exercise]);
+  //   setExerciseSets(prev => ({
+  //     ...prev,
+  //     [exercise.id]: sets
+  //   }));
+  // };
 
-  const handleExerciseRemove = (exerciseId: string) => {
-    setSelectedExercises(prev => prev.filter(ex => ex.id !== exerciseId));
-    setExerciseSets(prev => {
-      const newSets = { ...prev };
-      delete newSets[exerciseId];
-      return newSets;
-    });
-  };
+  // const handleExerciseRemove = (exerciseId: string) => {
+  //   setSelectedExercises(prev => prev.filter((ex: any) => ex.id !== exerciseId));
+  //   setExerciseSets(prev => {
+  //     const newSets = { ...prev };
+  //     delete newSets[exerciseId];
+  //     return newSets;
+  //   });
+  // };
 
   const handleFriendSelect = (friend: Friend) => {
     setSelectedFriends(prev => [...prev, friend]);
   };
 
   const handleFriendRemove = (friendId: number) => {
-    setSelectedFriends(prev => prev.filter(f => f.id !== friendId));
+    setSelectedFriends(prev => prev.filter((f: any) => f.id !== friendId));
   };
 
   const handleSave = async () => {
@@ -98,14 +99,17 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
     setIsCreating(true);
 
     try {
-      const workoutExercises: WorkoutExercise[] = selectedExercises.map(exercise => ({
+      const workoutExercises: WorkoutExercise[] = selectedExercises.map((exercise: Exercise, index) => ({
+        id: Date.now() + index, // Генерируем уникальный ID для связи
         exerciseId: exercise.id,
         exercise,
         sets: exerciseSets[exercise.id] || [],
+        order: index + 1,
         notes: '',
+        completed: false
       }));
 
-      const participants: WorkoutParticipant[] = selectedFriends.map(friend => ({
+      const participants: WorkoutParticipant[] = selectedFriends.map((friend: any) => ({
         userId: friend.id,
         user: {
           id: friend.id,
@@ -122,15 +126,16 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
       const workout = {
         title,
         description,
-        date,
-        time,
-        estimatedDuration: estimatedDuration ? parseInt(estimatedDuration) : undefined,
-        gym,
+        date: date.toISOString(),
+        startTime: time,
+        duration: estimatedDuration ? parseInt(estimatedDuration) : undefined,
+        status: 'planned' as const,
+        location: gym, // Правильное поле для места тренировки
         exercises: workoutExercises,
         participants,
-        createdBy: store.currentUser?.id || 1,
-        createdAt: new Date(),
-        isTemplate: false,
+        invitations: [], // Пустой массив приглашений при создании
+        createdBy: String(store.currentUser?.id || 1),
+        createdAt: new Date().toISOString(),
       };
 
       store.addUserWorkout(workout);
@@ -223,10 +228,20 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
 
           {activeTab === 'exercises' && (
             <ExerciseSelector
-              selectedExercises={selectedExercises}
-              exerciseSets={exerciseSets}
-              onExerciseAdd={handleExerciseAdd}
-              onExerciseRemove={handleExerciseRemove}
+              selectedExercises={selectedExercises.map((ex: any) => ({
+                exerciseId: ex.id,
+                exercise: ex,
+                sets: exerciseSets[ex.id] || []
+              }))}
+              onExercisesChange={(exercises) => {
+                setSelectedExercises(exercises.map(e => e.exercise));
+                const newSets: Record<string, ExerciseSet[]> = {};
+                exercises.forEach(e => {
+                  newSets[e.exerciseId] = e.sets;
+                });
+                setExerciseSets(newSets);
+              }}
+              onClose={() => {}}
             />
           )}
 
@@ -236,7 +251,7 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
                 <div style={{ marginBottom: 16 }}>
                   <h4>Приглашенные друзья:</h4>
                   <div style={{ display: 'grid', gap: 8 }}>
-                    {selectedFriends.map(friend => (
+                    {selectedFriends.map((friend: any) => (
                       <div key={friend.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ flex: 1 }}>{friend.first_name} {friend.last_name}</span>
                         <Button size="s" mode="secondary" onClick={() => handleFriendRemove(friend.id)}>
@@ -255,7 +270,7 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
               />
 
               <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-                {filteredFriends.map(friend => (
+                {filteredFriends.map((friend: any) => (
                   <FriendCard
                     key={friend.id}
                     friend={friend}

@@ -4,7 +4,7 @@ import { Text, Div } from '@vkontakte/vkui';
 interface EventProps {
   title: string;
   date: Date;
-  time: string;
+  time: number;
   location?: string;
   color?: string;
 }

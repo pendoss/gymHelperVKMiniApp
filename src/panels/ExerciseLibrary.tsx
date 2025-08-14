@@ -23,33 +23,40 @@ import {
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
+import { Exercise } from '../types/api';
 
 export interface ExerciseLibraryProps extends NavIdProps {}
 
 export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
-  const store = useStore();
+  const appStore = useStore();
   const [searchValue, setSearchValue] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const routeNavigator = useRouteNavigator();
 
   // Получаем уникальные категории из существующих упражнений
-  const dynamicCategories = store.getUniqueCategories();
+  const dynamicCategories = [...new Set(appStore.exercises.exercises
+    .flatMap((ex: Exercise) => ex.muscleGroup || [])
+    .filter((muscleGroup: string) => muscleGroup !== undefined && muscleGroup !== null)
+  )] as string[];
   const categories = dynamicCategories.length > 0 ? ['Все', ...dynamicCategories] : ['Все'];
 
-    const filteredExercises = store.exercises.filter(exercise => {
-    const matchesSearch = exercise.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-                         exercise.muscleGroup.some(group => group.toLowerCase().includes(searchValue.toLowerCase())) ||
-                         (exercise.equipment && exercise.equipment.some(eq => eq.toLowerCase().includes(searchValue.toLowerCase())));
-    const matchesCategory = selectedCategory === 'Все' || exercise.muscleGroup.includes(selectedCategory);
-    return matchesSearch && matchesCategory;
-  });
+  const filteredExercises = appStore.exercises.exercises
+    .filter((exercise: Exercise) => exercise && exercise.id) // Исключаем пустые или некорректные упражнения
+    .filter((exercise: Exercise) => {
+      const exerciseName = exercise?.name || '';
+      const exerciseMuscleGroups = exercise?.muscleGroup || [];
+      return exerciseName.toLowerCase().includes(searchValue.toLowerCase()) &&
+             (selectedCategory === "Все" || exerciseMuscleGroups.includes(selectedCategory));
+    });
 
   const handleAddExercise = () => {
     routeNavigator.push('/exercise-edit');
   };
 
-  const handleExerciseClick = (exerciseId: string) => {
-    routeNavigator.push(`/exercise-detail/${exerciseId}`);
+  const handleExerciseClick = (exerciseId: number) => {
+    if (exerciseId) {
+      routeNavigator.push(`/exercise-detail/${exerciseId}`);
+    }
   };
 
   return (
@@ -76,7 +83,7 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
               id={`tab-${category.toLowerCase()}`}
               selected={selectedCategory === category}
               onClick={() => setSelectedCategory(category)}
-              aria-controls={`exercises-content-${selectedCategory.toLowerCase()}`}
+              aria-controls={`exercises-content-${selectedCategory}`}
             >
               {category}
             </TabsItem>
@@ -89,8 +96,8 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
       <Group>
         <Div>
           <div 
-            id={`exercises-content-${selectedCategory.toLowerCase()}`}
-            aria-labelledby={`tab-${selectedCategory.toLowerCase()}`}
+            id={`exercises-content-${selectedCategory}`}
+            aria-labelledby={`tab-${selectedCategory}`}
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -98,14 +105,14 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
               marginBottom: 16
             }}
           >
-            {filteredExercises.map((exercise) => {
+            {filteredExercises.map((exercise: Exercise) => {
               return (
                 <Card 
-                  key={exercise.id} 
+                  key={exercise?.id || `exercise-${Math.random()}`} 
                   mode="outline" 
                   className="enhanced-card"
                   style={{ cursor: 'pointer' }}
-                  onClick={() => handleExerciseClick(exercise.id)}
+                  onClick={() => exercise?.id && handleExerciseClick(exercise.id)}
                 >
                   <div style={{ position: 'relative' }}>
                     <div style={{
@@ -125,7 +132,7 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
                         textAlign: 'center',
                         padding: '0 16px'
                       }}>
-                        {exercise.name}
+                        {exercise?.name || 'Без названия'}
                       </div>
                       <div style={{
                         position: 'absolute',
@@ -139,7 +146,7 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
                             fontSize: 11
                           }}
                         >
-                          {exercise.muscleGroup[0]}
+                          {exercise?.muscleGroup?.[0] || 'Разное'}
                         </Badge>
                       </div>
                     </div>
@@ -147,7 +154,7 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
                     <Div>
                       <div style={{ marginBottom: 12 }}>
                         <div style={{ fontSize: 14, opacity: 0.7, lineHeight: 1.4 }}>
-                          {exercise.description}
+                          {exercise?.description || 'Описание отсутствует'}
                         </div>
                       </div>
 
@@ -166,18 +173,16 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
                       </div>
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {exercise.muscleGroup.map((group, index) => (
+                        {exercise?.muscleGroup?.map((group: string, index: number) => (
                           <Chip key={index} removable={false} style={{ fontSize: 11 , backgroundColor: 'var(--vkui--color_background_secondary)'}}>
-                            {group}
+                            {group || 'Группа мышц'}
                           </Chip>
                         ))}
-                        {exercise.equipment && exercise.equipment.length > 0 && (
-                          exercise.equipment.map((eq, index) => (
-                            <Chip key={`eq-${index}`} removable={false} style={{ fontSize: 11, backgroundColor: 'var(--vkui--color_background_secondary)' }}>
-                              {eq}
-                            </Chip>
-                          ))
-                        )}
+                        {exercise?.equipment?.map((eq: string, index: number) => (
+                          <Chip key={`eq-${index}`} removable={false} style={{ fontSize: 11, backgroundColor: 'var(--vkui--color_background_secondary)' }}>
+                            {eq || 'Оборудование'}
+                          </Chip>
+                        ))}
                       </div>
                     </Div>
                   </div>

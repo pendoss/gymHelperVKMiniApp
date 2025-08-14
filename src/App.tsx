@@ -27,15 +27,19 @@ const AppContent = observer(() => {
         // Сохраняем информацию о пользователе в store
         const userData = {
           id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          photo_200: user.photo_200,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          photo: user.photo_200,
           city: user.city,
-          level: 'beginner' as const, // по умолчанию
-          mainGym: undefined, // будет установлено позже пользователем
+          settings: {
+            preferences: {
+              level: 'beginner' as const,
+              defaultGym: undefined
+            }
+          },
           firstLogin: !localStorage.getItem('user_onboarded'), // проверяем был ли пользователь уже зарегистрирован
         };
-        store.setCurrentUser(userData);
+        store.auth.state.user = userData as any;
         
         setPopout(null);
       } catch (error) {
@@ -57,15 +61,19 @@ const AppContent = observer(() => {
         
         const fallbackUserData = {
           id: fallbackUser.id,
-          first_name: fallbackUser.first_name,
-          last_name: fallbackUser.last_name,
-          photo_200: fallbackUser.photo_200,
+          firstName: fallbackUser.first_name,
+          lastName: fallbackUser.last_name,
+          photo: fallbackUser.photo_200,
           city: fallbackUser.city,
-          level: 'beginner' as const,
-          mainGym: undefined,
+          settings: {
+            preferences: {
+              level: 'beginner' as const,
+              defaultGym: undefined
+            }
+          },
           firstLogin: !localStorage.getItem('user_onboarded'), // проверяем был ли пользователь уже зарегистрирован
         };
-        store.setCurrentUser(fallbackUserData);
+        store.auth.state.user = fallbackUserData as any;
         
         setPopout(null);
       }

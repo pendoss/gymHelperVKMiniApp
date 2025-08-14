@@ -1,6 +1,8 @@
 import { createContext, useContext } from 'react';
-import { appStore } from './AppStore';
+import AppStore from './AppStore';
+import bridge from '@vkontakte/vk-bridge';
 
+const appStore = new AppStore(bridge);
 const StoreContext = createContext(appStore);
 
 export const useStore = () => {

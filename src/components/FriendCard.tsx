@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Card, Text, Div, Button, Avatar, Chip } from '@vkontakte/vkui';
 import { Icon28MessageOutline, Icon28AddOutline } from '@vkontakte/icons';
-import { Friend } from '../types';
+import { Friend } from '../types/index';
 import bridge from '@vkontakte/vk-bridge';
 
 interface FriendCardProps {

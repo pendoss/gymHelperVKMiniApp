@@ -34,10 +34,11 @@ const initialState: AppState = {
   workouts: [
     {
       id: '1',
+      name: 'Тренировка груди',
       title: 'Тренировка груди',
       description: 'Интенсивная тренировка грудных мышц',
       date: new Date(2025, 7, 15),
-      time: '18:00',
+      startTime: '18:00',
       gym: 'FitnesLife',
       exercises: [
         {
@@ -55,9 +56,9 @@ const initialState: AppState = {
             createdAt: new Date(),
           },
           sets: [
-            { id: '1', reps: 10, weight: 80 },
-            { id: '2', reps: 8, weight: 85 },
-            { id: '3', reps: 6, weight: 90 },
+            { id: 1, reps: 10, weight: 80, completed: false },
+            { id: 2, reps: 8, weight: 85, completed: false },
+            { id: 3, reps: 6, weight: 90, completed: false },
           ],
         },
       ],
@@ -83,10 +84,11 @@ const initialState: AppState = {
     },
     {
       id: '2',
+      name: 'Тренировка ног',
       title: 'Тренировка ног',
       description: 'Базовая тренировка ног',
       date: new Date(2025, 7, 18),
-      time: '19:00',
+      startTime: '19:00',
       gym: 'World Gym',
       exercises: [
         {
@@ -104,9 +106,9 @@ const initialState: AppState = {
             createdAt: new Date(),
           },
           sets: [
-            { id: '4', reps: 12, weight: 100 },
-            { id: '5', reps: 10, weight: 110 },
-            { id: '6', reps: 8, weight: 120 },
+            { id: 4, reps: 12, weight: 100, completed: false },
+            { id: 5, reps: 10, weight: 110, completed: false },
+            { id: 6, reps: 8, weight: 120, completed: false },
           ],
         },
       ],

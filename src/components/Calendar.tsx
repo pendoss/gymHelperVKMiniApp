@@ -4,6 +4,7 @@ import { Icon28ChevronLeftOutline, Icon28ChevronRightOutline } from '@vkontakte/
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores/StoreContext';
 import { DayModal } from './DayModal';
+import { Workout } from '../types/api';
 import './Calendar.css';
 
 interface CalendarProps {
@@ -11,7 +12,7 @@ interface CalendarProps {
 }
 
 export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
-  const store = useStore();
+  const appStore = useStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDateForModal, setSelectedDateForModal] = useState<Date | null>(null);
@@ -39,14 +40,14 @@ export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
   };
 
   const hasWorkoutOnDate = (date: Date) => {
-    return store.getUserWorkouts().some(workout => {
+    return appStore.getUserWorkouts().some((workout: Workout) => {
       const workoutDate = new Date(workout.date);
       return workoutDate.toDateString() === date.toDateString();
     });
   };
 
   const getWorkoutsForDate = (date: Date) => {
-    return store.getUserWorkouts().filter(workout => {
+    return appStore.getUserWorkouts().filter((workout: Workout) => {
       const workoutDate = new Date(workout.date);
       return workoutDate.toDateString() === date.toDateString();
     });

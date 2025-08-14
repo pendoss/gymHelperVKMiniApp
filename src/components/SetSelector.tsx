@@ -18,16 +18,16 @@ import {
   Icon28AddCircleOutline,
   Icon28DeleteOutline,
 } from '@vkontakte/icons';
-import { Set } from '../types';
+import { ExerciseSet } from '../types/api';
 
 interface SetSelectorProps extends NavIdProps {
   exerciseName: string;
   existingSets: Array<{
     workoutTitle: string;
     workoutDate: Date;
-    sets: Set[];
+    sets: ExerciseSet[];
   }>;
-  onConfirm: (selectedSets: Set[]) => void;
+  onConfirm: (selectedSets: ExerciseSet[]) => void;
   onBack: () => void;
 }
 
@@ -39,32 +39,33 @@ export const SetSelector: FC<SetSelectorProps> = ({
   onBack,
 }) => {
   const [selectedMode, setSelectedMode] = useState<'existing' | 'new'>('existing');
-  const [selectedExistingSets, setSelectedExistingSets] = useState<Set[]>([]);
-  const [newSets, setNewSets] = useState<Set[]>([
-    { id: '1', reps: 10, weight: 50 }
+  const [selectedExistingSets, setSelectedExistingSets] = useState<ExerciseSet[]>([]);
+  const [newSets, setNewSets] = useState<ExerciseSet[]>([
+    { id: 1, reps: 10, weight: 50 }
   ]);
 
   const addNewSet = () => {
-    const newSet: Set = {
-      id: Date.now().toString(),
+    const newSet: ExerciseSet = {
+      id: Date.now(),
       reps: 10,
       weight: 50,
     };
     setNewSets(prev => [...prev, newSet]);
   };
 
-  const removeNewSet = (setId: string) => {
-    setNewSets(prev => prev.filter(set => set.id !== setId));
+  const removeNewSet = (setId: number) => {
+    if (newSets.length > 1) {
+      setNewSets(prev => prev.filter(set => set.id !== setId));
+    }
   };
 
-  const updateNewSet = (setId: string, field: keyof Set, value: number | undefined) => {
-    setNewSets(prev => prev.map(set => 
+  const updateNewSet = (setId: number, field: keyof ExerciseSet, value: number | undefined) => {
+    setNewSets(prev => prev.map(set =>
       set.id === setId ? { ...set, [field]: value } : set
     ));
   };
 
-  const toggleExistingSet = (set: Set) => {
-    setSelectedExistingSets(prev => {
+  const toggleExistingSet = (set: ExerciseSet) => {    setSelectedExistingSets(prev => {
       const isSelected = prev.some(s => s.id === set.id);
       if (isSelected) {
         return prev.filter(s => s.id !== set.id);

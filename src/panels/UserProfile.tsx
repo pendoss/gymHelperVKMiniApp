@@ -16,9 +16,9 @@ import {
 import { Icon28ArrowLeftOutline } from "@vkontakte/icons";
 import { observer } from "mobx-react-lite";
 import { FriendCard } from "../components/FriendCard";
+import { UserLeaderboardPosition } from "../components/UserLeaderboardPosition";
 import { useStore } from "../stores/StoreContext";
 import { useRouteNavigator, useParams } from "@vkontakte/vk-mini-apps-router";
-import { Workout } from "../types";
 
 export interface UserProfileProps extends NavIdProps {}
 
@@ -31,14 +31,14 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
     const [friendFilter, setFriendFilter] = useState("all");
 
     // Находим пользователя среди друзей или создаем объект пользователя
-    const user = store.friends.find(f => f.id === userId) || 
-                 (userId === store.currentUser?.id ? {
-                     id: store.currentUser.id,
-                     first_name: store.currentUser.first_name,
-                     last_name: store.currentUser.last_name,
-                     photo_200: store.currentUser.photo_200,
+    const user = store.friends.find((f: any) => f.id === userId) || 
+                 (userId === Number(store.currentUser?.id) ? {
+                     id: store.currentUser?.id,
+                     first_name: (store.currentUser as any)?.firstName,
+                     last_name: (store.currentUser as any)?.lastName,
+                     photo_200: (store.currentUser as any)?.photo,
                      isOnline: true,
-                     gym: store.currentUser.mainGym,
+                     gym: (store.currentUser as any)?.settings?.preferences?.defaultGym,
                      workoutsThisWeek: 0,
                      status: 'resting' as const
                  } : null);
@@ -62,20 +62,22 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
         );
     }
 
-  const getUserWorkouts = () => {
-    return store.getUserWorkouts(Number(userId));
-  };    const getUserAchievements = () => {
+    const getUserWorkouts = () => {
+        return store.getUserWorkouts().filter((w: any) => w.createdBy === userId.toString());
+    };
+    
+    const getUserAchievements = () => {
         const userWorkouts = getUserWorkouts();
         const totalWorkouts = userWorkouts.length;
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
         
-        const workoutsThisMonth = userWorkouts.filter((workout: Workout) => {
+        const workoutsThisMonth = userWorkouts.filter((workout: any) => {
             const workoutDate = new Date(workout.date);
             return workoutDate.getMonth() === currentMonth && workoutDate.getFullYear() === currentYear;
         }).length;
 
-        const completedWorkouts = userWorkouts.filter((w: Workout) => w.completed).length;
+        const completedWorkouts = userWorkouts.filter((w: any) => w.completed).length;
 
         return {
             totalWorkouts,
@@ -86,22 +88,22 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
 
     const getRecentWorkouts = () => {
         return getUserWorkouts()
-            .filter((workout: Workout) => new Date(workout.date) <= new Date())
-            .sort((a: Workout, b: Workout) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .filter((workout: any) => new Date(workout.date) <= new Date())
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5);
     };
 
     const getUserFriends = () => {
         // В реальном приложении здесь был бы API запрос за друзьями пользователя
         // Пока возвращаем общий список друзей (кроме просматриваемого пользователя)
-        return store.friends.filter(friend => friend.id !== userId);
+        return store.friends.filter((friend: any) => friend.id !== userId);
     };
 
     const achievements = getUserAchievements();
     const recentWorkouts = getRecentWorkouts();
     const userFriends = getUserFriends();
 
-    const filteredFriends = userFriends.filter((friend) => {
+    const filteredFriends = userFriends.filter((friend: any) => {
         switch (friendFilter) {
             case "online":
                 return friend.isOnline;
@@ -154,6 +156,14 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
 
             <Group header={<Header className="enhanced-header">Статистика</Header>} className="enhanced-group">
                 <Div>
+                    <div style={{ marginBottom: 16 }}>
+                        <UserLeaderboardPosition 
+                            userId={userId} 
+                            isCurrentUser={userId === Number(store.currentUser?.id)}
+                            clickable={false} 
+                        />
+                    </div>
+                    
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                         <div className="stats-card">
                             <div className="stats-number">{achievements.workoutsThisMonth}</div>
@@ -178,7 +188,7 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
                             Нет тренировок
                         </Text>
                     ) : (
-                        recentWorkouts.map((workout: Workout) => (
+                        recentWorkouts.map((workout) => (
                             <div 
                                 key={workout.id}
                                 style={{
@@ -194,7 +204,7 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
                                     {workout.title}
                                 </Text>
                                 <Text weight="2" style={{ color: 'var(--vkui--color_text_secondary)', fontSize: '14px' }}>
-                                    {new Date(workout.date).toLocaleDateString('ru')} • {workout.time} • {workout.gym}
+                                    {new Date(workout.date).toLocaleDateString('ru')} • {workout.startTime || '00:00'} • {workout.location}
                                 </Text>
                             </div>
                         ))
@@ -221,7 +231,7 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
                             {friendFilter === "all" ? "Нет друзей" : "Нет друзей в этой категории"}
                         </Text>
                     ) : (
-                        filteredFriends.map((friend) => (
+                        filteredFriends.map((friend: any) => (
                             <div 
                                 key={friend.id}
                                 onClick={() => routeNavigator.push(`/user-profile/${friend.id}`)}

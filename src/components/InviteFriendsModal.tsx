@@ -19,7 +19,7 @@ import { useStore } from "../stores/StoreContext";
 import { Icon28UsersOutline } from "@vkontakte/icons";
 
 export interface InviteFriendsModalProps {
-    workoutId: string;
+    workoutId: number;
     isVisible: boolean;
     onClose: () => void;
 }
@@ -33,7 +33,7 @@ export const InviteFriendsModal: FC<InviteFriendsModalProps> = observer(({
     const [searchValue, setSearchValue] = useState("");
     const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
 
-    const filteredFriends = store.friends.filter(friend => 
+    const filteredFriends = store.friends.filter((friend: any) => 
         `${friend.first_name} ${friend.last_name}`.toLowerCase().includes(searchValue.toLowerCase())
     );
 
@@ -85,7 +85,7 @@ export const InviteFriendsModal: FC<InviteFriendsModalProps> = observer(({
                             </Text>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {filteredFriends.map(friend => (
+                                {filteredFriends.map((friend: any) => (
                                     <Card
                                         key={friend.id}
                                         mode={selectedFriends.includes(friend.id) ? "shadow" : "outline"}

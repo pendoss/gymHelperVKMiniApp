@@ -1,109 +1,95 @@
-import { FC, useState } from 'react';
-import {
-  Panel,
-  PanelHeader,
-  Group,
-  Div,
-  Search,
-  SegmentedControl,
-  NavIdProps,
-  Spacing,
-  Button,
-} from '@vkontakte/vkui';
-import { WorkoutCard } from '../components/WorkoutCard';
-import { useStore } from '../stores/StoreContext';
-import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
-import { observer } from 'mobx-react-lite';
+import { FC, useState } from "react";
+import { Panel, PanelHeader, Group, Div, Search, SegmentedControl, NavIdProps, Spacing, Button } from "@vkontakte/vkui";
+import { WorkoutCard } from "../components/WorkoutCard";
+import { useStore } from "../stores/StoreContext";
+import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
+import { observer } from "mobx-react-lite";
 
 export interface WorkoutListProps extends NavIdProps {}
 
 export const WorkoutList: FC<WorkoutListProps> = observer(({ id }) => {
-  const store = useStore();
-  const [searchValue, setSearchValue] = useState('');
-  const [filter, setFilter] = useState('all');
-  const routeNavigator = useRouteNavigator();
+    const store = useStore();
+    const [searchValue, setSearchValue] = useState("");
+    const [filter, setFilter] = useState("all");
+    const routeNavigator = useRouteNavigator();
 
-  const now = new Date();
+    const now = new Date();
 
-  const filteredWorkouts = store.getUserWorkouts()
-    .filter(workout => {
-      const matchesSearch = workout.title.toLowerCase().includes(searchValue.toLowerCase()) ||
-                           workout.gym.toLowerCase().includes(searchValue.toLowerCase());
-      
-      if (!matchesSearch) return false;
+    const filteredWorkouts = store
+        .getUserWorkouts()
+        .filter((workout) => {
+            const matchesSearch =
+                workout.title.toLowerCase().includes(searchValue.toLowerCase()) ||
+                workout.location?.toLowerCase().includes(searchValue.toLowerCase());
 
-      switch (filter) {
-        case 'upcoming':
-          return new Date(workout.date) >= now;
-        case 'past':
-          return new Date(workout.date) < now;
-        case 'templates':
-          return workout.isTemplate;
-        default:
-          return true;
-      }
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            if (!matchesSearch) return false;
 
-  const handleAddWorkout = () => {
-    routeNavigator.push('/create');
-  };
+            switch (filter) {
+                case "upcoming":
+                    return new Date(workout.date) >= now;
+                case "past":
+                    return new Date(workout.date) < now;
+                default:
+                    return true;
+            }
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  return (
-    <Panel id={id}>
-      <PanelHeader>
-        Тренировки
-      </PanelHeader>
+    const handleAddWorkout = () => {
+        routeNavigator.push("/create");
+    };
 
-      <Group>
-        <Div>
-          <Search
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Поиск тренировок..."
-          />
-        </Div>
-      </Group>
+    return (
+        <Panel id={id}>
+            <PanelHeader>Тренировки</PanelHeader>
 
-      <Group>
-        <Div>
-          <SegmentedControl
-            value={filter}
-            onChange={(value) => setFilter(value as string)}
-            options={[
-              { label: 'Все', value: 'all' },
-              { label: 'Предстоящие', value: 'upcoming' },
-              { label: 'Прошедшие', value: 'past' }
-            ]}
-            size="l"
-          />
-        </Div>
-      </Group>
+            <Group>
+                <Div>
+                    <Search
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                        placeholder="Поиск тренировок..."
+                    />
+                </Div>
+            </Group>
 
-      <Group>
-        <Div>
-          {filteredWorkouts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 32 }}>
-              <p>Тренировки не найдены</p>
-            </div>
-          ) : (
-            <div>
-              {filteredWorkouts.map((workout) => (
-                <WorkoutCard key={workout.id} workout={workout} />
-              ))}
-            </div>
-          )}
-        </Div>
-        <Button
-          size='m'
-          stretched={false}
-          onClick={handleAddWorkout}
-        >
-           Добавить тренировку
-        </Button>
-      </Group>
-        
-      <Spacing size={80} />
-    </Panel>
-  );
+            <Group>
+                <Div>
+                    <SegmentedControl
+                        value={filter}
+                        onChange={(value) => setFilter(value as string)}
+                        options={[
+                            { label: "Все", value: "all" },
+                            { label: "Предстоящие", value: "upcoming" },
+                            { label: "Прошедшие", value: "past" },
+                        ]}
+                        size="l"
+                    />
+                </Div>
+            </Group>
+
+            <Group>
+                <Div>
+                    {filteredWorkouts.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: 32 }}>
+                            <p>Тренировки не найдены</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {filteredWorkouts.map((workout) => (
+                                <WorkoutCard key={workout.id} workout={workout as any} />
+                            ))}
+                        </div>
+                    )}
+                </Div>
+                <div style={{display:'flex', justifyContent:'center'}}>
+                  <Button size="m" stretched={false} onClick={handleAddWorkout}>
+                    Добавить тренировку
+                  </Button>
+                </div>
+            </Group>
+
+            <Spacing size={80} />
+        </Panel>
+    );
 });

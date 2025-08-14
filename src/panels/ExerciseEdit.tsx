@@ -27,13 +27,9 @@ import {
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator, useParams } from '@vkontakte/vk-mini-apps-router';
-import { type Set, ExerciseStep, ExerciseRecommendation } from '../types';
+import { Exercise, ExerciseSet, ExerciseStep, ExerciseRecommendation } from '../types/api';
 
 export interface ExerciseEditProps extends NavIdProps {}
-
-interface ExerciseSet extends Set {
-  id: string;
-}
 
 export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   const store = useStore();
@@ -42,7 +38,7 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
 
   // Получаем ID упражнения из параметров роута (если редактируем)
   const exerciseId = params?.exerciseId;
-  const existingExercise = exerciseId ? store.exercises.find(e => e.id === exerciseId) : null;
+  const existingExercise: Exercise | undefined = exerciseId ? store.exercises.exercises.find((e: Exercise) => e.id === parseInt(exerciseId)) : undefined;
   const isEditing = !!existingExercise;
 
   const [exerciseName, setExerciseName] = useState(existingExercise?.name || '');
@@ -50,13 +46,11 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   const [description, setDescription] = useState(existingExercise?.description || '');
   const [equipment, setEquipment] = useState<string[]>(existingExercise?.equipment || []);
   const [restTime, setRestTime] = useState(existingExercise?.restTime?.toString() || '');
-  const [videoUrl, setVideoUrl] = useState(existingExercise?.videoUrl || '');
+  const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [steps, setSteps] = useState<ExerciseStep[]>(existingExercise?.steps || []);
   const [recommendations, setRecommendations] = useState<ExerciseRecommendation[]>(existingExercise?.recommendations || []);
-  const [sets, setSets] = useState<ExerciseSet[]>(
-    existingExercise?.defaultSets?.map(set => ({ ...set, id: set.id })) || []
-  );
+  const [sets, setSets] = useState<ExerciseSet[]>([]);
 
   // Инициализация данных при редактировании
   useEffect(() => {
@@ -69,11 +63,11 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
       setVideoUrl(existingExercise.videoUrl || '');
       setSteps(existingExercise.steps || []);
       setRecommendations(existingExercise.recommendations || []);
-      setSets(existingExercise.defaultSets?.map(set => ({ ...set, id: set.id })) || []);
+      setSets([]);
     }
   }, [existingExercise]);
   
-  const existingCategories = store.getUniqueCategories();
+  const existingCategories = [...new Set(store.exercises.exercises.map((ex: Exercise) => ex.muscleGroup).flat())];
   const defaultCategories = [
     'Грудь',
     'Спина', 
@@ -88,7 +82,7 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   ];
   const uniqueCategories = [...new Set([...existingCategories, ...defaultCategories])].sort();
   
-  const existingEquipment = store.getUniqueEquipment();
+  const existingEquipment = [...new Set(store.exercises.exercises.flatMap((ex: Exercise) => ex.equipment || []))];
   const defaultEquipment = [
     'Штанга',
     'Гантели',
@@ -142,35 +136,35 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
 
   const addSet = () => {
     const newSet: ExerciseSet = {
-      id: Date.now().toString(),
+      id: Date.now(),
       reps: 10,
       weight: 80,
     };
     setSets([...sets, newSet]);
   };
 
-  const removeSet = (setId: string) => {
+  const removeSet = (setId: number) => {
     setSets(sets.filter((set) => set.id !== setId));
   };
 
-  const updateSet = (setId: string, field: keyof ExerciseSet, value: number) => {
+  const updateSet = (setId: number, field: keyof ExerciseSet, value: number) => {
     setSets(sets.map((set) => (set.id === setId ? { ...set, [field]: value } : set)));
   };
 
   const addStep = () => {
     const newStep: ExerciseStep = {
-      id: Date.now().toString(),
+      id: Date.now(),
       stepNumber: steps.length + 1,
       description: '',
     };
     setSteps([...steps, newStep]);
   };
 
-  const removeStep = (stepId: string) => {
+  const removeStep = (stepId: number) => {
     setSteps(steps.filter(step => step.id !== stepId));
   };
 
-  const updateStep = (stepId: string, description: string) => {
+  const updateStep = (stepId: number, description: string) => {
     setSteps(steps.map(step => 
       step.id === stepId ? { ...step, description } : step
     ));
@@ -178,17 +172,17 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
 
   const addRecommendation = () => {
     const newRecommendation: ExerciseRecommendation = {
-      id: Date.now().toString(),
+      id: Date.now(),
       text: '',
     };
     setRecommendations([...recommendations, newRecommendation]);
   };
 
-  const removeRecommendation = (recommendationId: string) => {
+  const removeRecommendation = (recommendationId: number) => {
     setRecommendations(recommendations.filter(rec => rec.id !== recommendationId));
   };
 
-  const updateRecommendation = (recommendationId: string, text: string) => {
+  const updateRecommendation = (recommendationId: number, text: string) => {
     setRecommendations(recommendations.map(rec => 
       rec.id === recommendationId ? { ...rec, text } : rec
     ));

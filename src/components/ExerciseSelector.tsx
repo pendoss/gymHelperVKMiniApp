@@ -20,81 +20,81 @@ import {
   Icon28AddCircleOutline,
   Icon28DeleteOutline,
 } from '@vkontakte/icons';
+import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { ExerciseCard } from './ExerciseCard';
 import { useStore } from '../stores/StoreContext';
-import { Exercise, Set } from '../types';
 import { observer } from 'mobx-react-lite';
+import type { Exercise, ExerciseSet } from '../types/api';
 
-interface ExerciseSelectorProps {
-  selectedExercises: Exercise[];
-  exerciseSets: Record<string, Set[]>;
-  onExerciseAdd: (exercise: Exercise, sets: Set[]) => void;
-  onExerciseRemove: (exerciseId: string) => void;
+export interface ExerciseSelectorProps {
+  selectedExercises: { exerciseId: number; exercise: Exercise; sets: ExerciseSet[] }[];
+  onExercisesChange: (exercises: { exerciseId: number; exercise: Exercise; sets: ExerciseSet[] }[]) => void;
+  onClose: () => void;
 }
 
 export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
   selectedExercises,
-  exerciseSets,
-  onExerciseAdd,
-  onExerciseRemove
+  onExercisesChange
 }) => {
-  const store = useStore();
+  const appStore = useStore();
+  const routeNavigator = useRouteNavigator();
   
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [showSetModal, setShowSetModal] = useState(false);
   const [selectedExerciseForSets, setSelectedExerciseForSets] = useState<Exercise | null>(null);
   const [selectedMode, setSelectedMode] = useState<'existing' | 'new'>('existing');
-  const [selectedExistingSets, setSelectedExistingSets] = useState<Set[]>([]);
-  const [newSets, setNewSets] = useState<Set[]>([{ id: '1', reps: 10, weight: 50 }]);
+  const [selectedExistingSets, setSelectedExistingSets] = useState<ExerciseSet[]>([]);
+  const [newSets, setNewSets] = useState<ExerciseSet[]>([{ id: 1, reps: 10, weight: 50 }]);
 
-  const filteredExercises = store.exercises.filter(exercise =>
+  const filteredExercises = appStore.exercises.exercises.filter((exercise: Exercise) =>
     exercise.name.toLowerCase().includes(exerciseSearch.toLowerCase()) &&
-    !selectedExercises.find(selected => selected.id === exercise.id)
+    !selectedExercises.find(selected => selected.exerciseId === exercise.id)
   );
 
   const handleExerciseSelect = (exercise: Exercise) => {
     setSelectedExerciseForSets(exercise);
     setShowSetModal(true);
     
-    const workoutsWithExercise = store.workouts.filter(workout => 
-      workout.exercises.some(workoutExercise => workoutExercise.exerciseId === exercise.id)
+    const workoutsWithExercise = appStore.getUserWorkouts().filter((workout: any) => 
+      workout.exercises.some((workoutExercise: any) => workoutExercise.exerciseId === exercise.id)
     );
     
-    if (exercise.defaultSets && exercise.defaultSets.length > 0 || workoutsWithExercise.length > 0) {
+    // В API типах нет defaultSets, поэтому упрощаем логику
+    if (workoutsWithExercise.length > 0) {
       setSelectedMode('existing');
     } else {
       setSelectedMode('new');
     }
     
     setSelectedExistingSets([]);
-    setNewSets([{ id: Date.now().toString(), reps: 10, weight: 50 }]);
+    setNewSets([{ id: Date.now(), reps: 10, weight: 50 }]);
   };
 
   const addNewSet = () => {
-    const newSet: Set = {
-      id: Date.now().toString(),
+    const newSet: ExerciseSet = {
+      id: Date.now(),
       reps: 10,
       weight: 50,
     };
     setNewSets(prev => [...prev, newSet]);
   };
 
-  const removeNewSet = (setId: string) => {
+  const removeNewSet = (setId: number) => {
     if (newSets.length > 1) {
       setNewSets(prev => prev.filter(set => set.id !== setId));
     }
   };
 
-  const updateNewSet = (setId: string, field: keyof Set, value: number | undefined) => {
-    setNewSets(prev => prev.map(set => 
+  const updateNewSet = (setId: number, field: keyof ExerciseSet, value: number | undefined) => {
+    setNewSets(prev => prev.map(set =>
       set.id === setId ? { ...set, [field]: value } : set
     ));
   };
 
-  const toggleExistingSet = (set: Set) => {
+  const toggleExistingSet = (set: ExerciseSet) => {
     setSelectedExistingSets(prev => {
-      const isSelected = prev.some(s => s.id === set.id);
-      if (isSelected) {
+      const exists = prev.find(s => s.id === set.id);
+      if (exists) {
         return prev.filter(s => s.id !== set.id);
       } else {
         return [...prev, set];
@@ -105,25 +105,38 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
   const selectAllDefaultSets = () => {
     if (!selectedExerciseForSets?.defaultSets) return;
     
-    const defaultSetsNotSelected = selectedExerciseForSets.defaultSets.filter(
-      set => !selectedExistingSets.some(s => s.id === set.id)
+    const allSelected = selectedExerciseForSets.defaultSets.every(set => 
+      selectedExistingSets.some(s => s.id === set.id)
     );
     
-    if (defaultSetsNotSelected.length > 0) {
-      setSelectedExistingSets(prev => [...prev, ...defaultSetsNotSelected]);
-    } else {
+    if (allSelected) {
+      // Убираем все defaultSets из выбранных
       setSelectedExistingSets(prev => 
-        prev.filter(set => !selectedExerciseForSets.defaultSets!.some(ds => ds.id === set.id))
+        prev.filter(selected => 
+          !selectedExerciseForSets.defaultSets!.some(defaultSet => defaultSet.id === selected.id)
+        )
       );
+    } else {
+      // Добавляем все defaultSets в выбранные
+      setSelectedExistingSets(prev => {
+        const newSets = selectedExerciseForSets.defaultSets!.filter(defaultSet => 
+          !prev.some(selected => selected.id === defaultSet.id)
+        );
+        return [...prev, ...newSets];
+      });
     }
-  };
-
-  const handleSetModalConfirm = () => {
+  };  const handleSetModalConfirm = () => {
     if (!selectedExerciseForSets) return;
     
     const finalSets = selectedMode === 'existing' ? selectedExistingSets : newSets;
     
-    onExerciseAdd(selectedExerciseForSets, finalSets);
+    const newExercise = {
+      exerciseId: Number(selectedExerciseForSets.id),
+      exercise: selectedExerciseForSets,
+      sets: finalSets
+    };
+    
+    onExercisesChange([...selectedExercises, newExercise]);
     
     setShowSetModal(false);
     setSelectedExerciseForSets(null);
@@ -133,7 +146,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
     setShowSetModal(false);
     setSelectedExerciseForSets(null);
     setSelectedExistingSets([]);
-    setNewSets([{ id: Date.now().toString(), reps: 10, weight: 50 }]);
+    setNewSets([{ id: Date.now(), reps: 10, weight: 50 }]);
     setSelectedMode('existing');
   };
 
@@ -145,20 +158,23 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
             <h4>Выбранные упражнения:</h4>
             <div style={{ display: 'grid', gap: 12 }}>
               {selectedExercises.map(exercise => (
-                <Card key={exercise.id} mode="outline" style={{ padding: 12 }}>
+                <Card key={exercise.exerciseId} mode="outline" style={{ padding: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>{exercise.name}</Text>
+                      <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>{exercise.exercise.name}</Text>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, opacity: 0.7 }}>{exercise.muscleGroup.join(', ')}</Text>
-                        {exerciseSets[exercise.id] && (
+                        <Text style={{ fontSize: 14, opacity: 0.7 }}>{exercise.exercise.muscleGroup.join(', ')}</Text>
+                        {exercise.sets.length > 0 && (
                           <Text style={{ fontSize: 12, background: 'var(--vkui--color_accent)', color: 'white', padding: '2px 6px', borderRadius: 4 }}>
-                            {exerciseSets[exercise.id].length} подходов
+                            {exercise.sets.length} подходов
                           </Text>
                         )}
                       </div>
                     </div>
-                    <Button size="s" mode="secondary" onClick={() => onExerciseRemove(exercise.id)}>
+                    <Button size="s" mode="secondary" onClick={() => {
+                      const updatedExercises = selectedExercises.filter(ex => ex.exerciseId !== exercise.exerciseId);
+                      onExercisesChange(updatedExercises);
+                    }}>
                       Удалить
                     </Button>
                   </div>
@@ -175,14 +191,53 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
         />
 
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {filteredExercises.map(exercise => (
-            <ExerciseCard
-              key={exercise.id}
-              exercise={exercise}
-              selectable
-              onSelect={handleExerciseSelect}
-            />
-          ))}
+          {appStore.exercises.exercises.length === 0 ? (
+            <Card mode="outline" style={{ 
+              padding: 24, 
+              textAlign: 'center',
+              background: 'var(--vkui--color_background_secondary)'
+            }}>
+              <Text style={{ marginBottom: 16, fontSize: 16 }}>
+                У вас пока нет упражнений
+              </Text>
+              <Text style={{ marginBottom: 20, opacity: 0.7 }}>
+                Создайте первое упражнение, чтобы добавить его в тренировку
+              </Text>
+              <Button 
+                size="m" 
+                mode="primary"
+                onClick={() => {
+                  // Навигация к созданию упражнения
+                  routeNavigator.push('/exercise-edit');
+                }}
+              >
+                Создать упражнение
+              </Button>
+            </Card>
+          ) : filteredExercises.length === 0 ? (
+            <Card mode="outline" style={{ 
+              padding: 24, 
+              textAlign: 'center',
+              background: 'var(--vkui--color_background_secondary)',
+              opacity: 0.7
+            }}>
+              <Text>
+                Упражнения не найдены
+              </Text>
+              <Text style={{ marginTop: 8, fontSize: 14, opacity: 0.7 }}>
+                Попробуйте изменить поисковый запрос
+              </Text>
+            </Card>
+          ) : (
+            filteredExercises.map(exercise => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                selectable
+                onSelect={handleExerciseSelect}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -230,8 +285,8 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
             <Group header={<Header size="s">Выберите подходы</Header>}>
               <Div>
                 {(() => {
-                  const workoutsWithExercise = store.workouts.filter(workout => 
-                    workout.exercises.some(workoutExercise => workoutExercise.exerciseId === selectedExerciseForSets.id)
+                  const workoutsWithExercise = appStore.getUserWorkouts().filter((workout: any) => 
+                    workout.exercises.some((workoutExercise: any) => workoutExercise.exerciseId === selectedExerciseForSets.id)
                   );
                   
                   const hasDefaultSets = selectedExerciseForSets.defaultSets && selectedExerciseForSets.defaultSets.length > 0;
@@ -332,7 +387,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
                             Из предыдущих тренировок:
                           </Text>
                           {workoutsWithExercise.map((workout, workoutIndex) => {
-                            const workoutExercise = workout.exercises.find(ex => ex.exerciseId === selectedExerciseForSets.id);
+                            const workoutExercise = workout.exercises.find((ex: any) => ex.exerciseId === selectedExerciseForSets.id);
                             if (!workoutExercise) return null;
                             
                             return (

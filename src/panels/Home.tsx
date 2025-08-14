@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import {
     Panel,
     PanelHeader,
@@ -27,15 +27,23 @@ export interface HomeProps extends NavIdProps {
 }
 
 export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
-    const store = useStore();
+    const appStore = useStore();
     const { photo_200, city, first_name, last_name } = { ...fetchedUser };
     const routeNavigator = useRouteNavigator();
-    const upcomingWorkouts = store.getUserWorkouts()
-        .filter((workout) => {
+
+    // Initialize app store if needed
+    useEffect(() => {
+        if (!appStore.isInitialized) {
+            // appStore.initialize(); // убираем вызов приватного метода
+        }
+    }, [appStore]);
+
+    const upcomingWorkouts = appStore.getUserWorkouts()
+        .filter((workout: any) => {
             // Показываем только будущие тренировки
             return new Date(workout.date) >= new Date();
         })
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 3);
 
     const handleCreateWorkout = () => {
@@ -53,8 +61,8 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
         <Panel id={id}>
             <PanelHeader
                 after={
-                    <PanelHeaderButton onClick={store.toggleTheme} aria-label="Переключить тему">
-                        {store.theme.mode === "dark" ? <Icon28SunOutline /> : <Icon28MoonOutline />}
+                    <PanelHeaderButton onClick={appStore.toggleTheme} aria-label="Переключить тему">
+                        {appStore.theme === "dark" ? <Icon28SunOutline /> : <Icon28MoonOutline />}
                     </PanelHeaderButton>
                 }
             >
@@ -90,7 +98,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                     className="enhanced-group"
                 >
                     <Div>
-                        {upcomingWorkouts.map((workout) => (
+                        {upcomingWorkouts.map((workout: any) => (
                             <div
                               key={workout.id}
                               className="enhanced-cell"
@@ -113,11 +121,11 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                               <Chip
                                 removable={false}
                                 style={{backgroundColor: "#66BB6A", color: "white", padding: "1px"}}
-                              ><p style={{color: "white", fontWeight: "bold", margin: 0}}>{workout.time}</p></Chip>
+                              ><p style={{color: "white", fontWeight: "bold", margin: 0}}>{workout.startTime || '00:00'}</p></Chip>
                               </div>
                               <div style={{ fontSize: 14, color: "var(--vkui--color_text_secondary)", marginTop: 4 }}>
                               {`${new Date(workout.date).toLocaleDateString("ru")} • ${
-                                workout.gym
+                                workout.location || 'Не указано'
                               } • ${workout.exercises.length} упражнений`}
                               </div>
                             </div>
@@ -154,7 +162,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
             >
                 <Div>
                     <div className="enhanced-card calendar-container" style={{ padding: "16px" }}>
-                        <Calendar onDateSelect={(date) => store.setSelectedDate(date)} />
+                        <Calendar onDateSelect={(date) => appStore.setSelectedDate(date)} />
                     </div>
                 </Div>
             </Group>
@@ -163,7 +171,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                 <Div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                         <div className="stats-card">
-                            <div className="stats-number">{store.achievements.totalWorkouts}</div>
+                            <div className="stats-number">{appStore.getUserWorkouts().length}</div>
                             <div className="stats-label">Всего тренировок</div>
                         </div>
                         <div className="stats-card">
@@ -182,8 +190,8 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
             className="enhanced-cell"
             after={
               <Switch
-                checked={store.theme.mode === 'dark'}
-                onChange={store.toggleTheme}
+                checked={appStore.theme === 'dark'}
+                onChange={appStore.toggleTheme}
               />
             }
             style={{ 

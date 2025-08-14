@@ -3,7 +3,6 @@ import {
   Panel,
   PanelHeader,
   PanelHeaderBack,
-  PanelHeaderButton,
   Group,
   Header,
   Div,
@@ -24,7 +23,6 @@ import {
   Icon28UserCircleOutline,
   Icon28CheckCircleOutline,
   Icon28DeleteOutline,
-  Icon28ShareOutline,
 } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
 import { useRouteNavigator, useParams } from '@vkontakte/vk-mini-apps-router';
@@ -40,9 +38,8 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const workoutId = params?.workoutId || '1';
-  // Ищем тренировку сначала в пользовательских тренировках, затем в общих
-  const workout = store.getUserWorkouts().find((w: any) => w.id === workoutId) || 
-                  store.workouts.find((w: any) => w.id === workoutId);
+  // Ищем тренировку используя метод store с корректным сравнением типов
+  const workout = store.getWorkoutById(Number(workoutId));
 
   if (!workout) {
     return (
@@ -60,10 +57,10 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const workoutDetails = {
     ...workout,
-    status: workout.completed ? 'completed' : (new Date(workout.date) < new Date() ? 'overdue' : 'planned'),
-    totalSets: workout.exercises.reduce((total, exercise) => total + exercise.sets.length, 0),
-    totalExercises: workout.exercises.length,
-    muscleGroups: [...new Set(workout.exercises.flatMap(ex => ex.exercise.muscleGroup || []))],
+    status: (workout as any).completed ? 'completed' : (new Date((workout as any).date) < new Date() ? 'overdue' : 'planned'),
+    totalSets: (workout as any).exercises.reduce((total: number, exercise: any) => total + exercise.sets.length, 0),
+    totalExercises: (workout as any).exercises.length,
+    muscleGroups: [...new Set((workout as any).exercises.flatMap((ex: any) => ex.exercise.muscleGroup || []))],
   };
 
   const handleEdit = () => {
@@ -72,13 +69,121 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const handleMarkCompleted = () => {
     // Проверяем, это пользовательская тренировка или общая
-    const isUserWorkout = store.getUserWorkouts().find((w: any) => w.id === workoutId);
+    const isUserWorkout = store.getUserWorkouts().find((w: any) => String(w.id) === String(workoutId));
     if (isUserWorkout) {
-      store.updateUserWorkout(workoutId, { completed: true, completedAt: new Date() });
+      store.updateUserWorkout(Number(workoutId), { completed: true, completedAt: new Date() });
     } else {
-      store.markWorkoutAsCompleted(workoutId);
+      store.markWorkoutAsCompleted(Number(workoutId));
     }
   };
+
+  // Функция проверки минимального времени выполнения тренировки
+  const checkMinimumWorkoutTime = (): { canComplete: boolean; timeLeft?: string; message?: string } => {
+    if (!workout) return { canComplete: true };
+    
+    const workoutDate = new Date(workout.date);
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    workoutDate.setHours(0, 0, 0, 0);
+    
+    if (workoutDate > today) {
+      const daysLeft = Math.ceil((workoutDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return { 
+        canComplete: false,
+        timeLeft: daysLeft === 1 ? '1 день' : `${daysLeft} дн.`,
+        message: 'Тренировку можно завершить только в день её проведения или позже' 
+      };
+    }
+    
+    if (workout.startTime && workout.duration) {
+      const [hours, minutes] = workout.startTime.split(':').map(Number);
+      const startDateTime = new Date(workout.date);
+      startDateTime.setHours(hours, minutes, 0, 0);
+      
+      if (now < startDateTime) {
+        const timeToStart = startDateTime.getTime() - now.getTime();
+        const minutesToStart = Math.ceil(timeToStart / (1000 * 60));
+        
+        return {
+          canComplete: false,
+          timeLeft: minutesToStart > 60 
+            ? `${Math.floor(minutesToStart / 60)}ч ${minutesToStart % 60}мин до начала`
+            : `${minutesToStart}мин до начала`,
+          message: `Тренировка начнется в ${workout.startTime}`
+        };
+      }
+      
+      const minDuration = Math.max(workout.duration * 0.5, 15);
+      const minimumEndTime = new Date(startDateTime.getTime() + minDuration * 60 * 1000);
+      
+      if (now < minimumEndTime) {
+        const timeLeftMs = minimumEndTime.getTime() - now.getTime();
+        const timeLeftMinutes = Math.ceil(timeLeftMs / (1000 * 60));
+        
+        return {
+          canComplete: false,
+          timeLeft: timeLeftMinutes > 60 
+            ? `${Math.floor(timeLeftMinutes / 60)}ч ${timeLeftMinutes % 60}мин`
+            : `${timeLeftMinutes}мин`,
+          message: `Минимальное время выполнения: ${minDuration} минут из ${workout.duration} запланированных`
+        };
+      }
+    } else {
+      // Если время не указано, просто проверяем что прошло минимум 15 минут с создания
+      const createdAt = workout.createdAt ? new Date(workout.createdAt) : new Date(workout.date);
+      const minimumEndTime = new Date(createdAt.getTime() + 15 * 60 * 1000); // 15 минут
+      
+      if (now < minimumEndTime) {
+        const timeLeftMs = minimumEndTime.getTime() - now.getTime();
+        const timeLeftMinutes = Math.ceil(timeLeftMs / (1000 * 60));
+        
+        return {
+          canComplete: false,
+          timeLeft: `${timeLeftMinutes}мин`,
+          message: 'Минимальное время выполнения: 15 минут'
+        };
+      }
+    }
+    
+    return { canComplete: true };
+  };
+
+  const timeCheck = checkMinimumWorkoutTime();
+
+  // Функция для получения информации о времени тренировки
+  const getWorkoutTimeInfo = () => {
+    if (!workout || !workout.startTime) return null;
+    
+    const [hours, minutes] = workout.startTime.split(':').map(Number);
+    const startDateTime = new Date(workout.date);
+    startDateTime.setHours(hours, minutes, 0, 0);
+    
+    const now = new Date();
+    const elapsed = now.getTime() - startDateTime.getTime();
+    const elapsedMinutes = Math.max(0, Math.floor(elapsed / (1000 * 60)));
+    
+    if (workout.duration) {
+      const progress = Math.min(100, (elapsedMinutes / workout.duration) * 100);
+      return {
+        elapsed: elapsedMinutes,
+        total: workout.duration,
+        progress,
+        isStarted: now >= startDateTime,
+        isFinished: elapsedMinutes >= workout.duration
+      };
+    }
+    
+    return {
+      elapsed: elapsedMinutes,
+      total: null,
+      progress: 0,
+      isStarted: now >= startDateTime,
+      isFinished: false
+    };
+  };
+
+  const workoutTimeInfo = getWorkoutTimeInfo();
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -86,40 +191,40 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const confirmDelete = () => {
     // Проверяем, это пользовательская тренировка или общая
-    const isUserWorkout = store.getUserWorkouts().find((w: any) => w.id === workoutId);
+    const isUserWorkout = store.getUserWorkouts().find((w: any) => String(w.id) === String(workoutId));
     if (isUserWorkout) {
-      store.deleteUserWorkout(workoutId);
+      store.deleteUserWorkout(Number(workoutId));
     } else {
-      store.deleteWorkout(workoutId);
+      store.deleteWorkout(Number(workoutId));
     }
     routeNavigator.back();
   };
 
-  const handleShare = async () => {
-    const shareText = `Тренировка: ${workout.title}\n` +
-      `📅 ${new Date(workout.date).toLocaleDateString('ru-RU')} в ${workout.time}\n` +
-      `🏋️ ${workoutDetails.totalExercises} упражнений, ${workoutDetails.totalSets} подходов\n` +
-      `💪 Группы мышц: ${workoutDetails.muscleGroups.join(', ')}\n` +
-      `📍 ${workout.gym}`;
+  // const handleShare = async () => {
+  //   const shareText = `Тренировка: ${(workout as any).title}\n` +
+  //     `📅 ${new Date((workout as any).date).toLocaleDateString('ru-RU')} в ${(workout as any).time}\n` +
+  //     `🏋️ ${workoutDetails.totalExercises} упражнений, ${workoutDetails.totalSets} подходов\n` +
+  //     `💪 Группы мышц: ${workoutDetails.muscleGroups.join(', ')}\n` +
+  //     `📍 ${(workout as any).gym}`;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Моя тренировка',
-          text: shareText
-        });
-      } catch (error) {
-        console.log('Sharing cancelled or failed');
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareText);
-        alert('Информация о тренировке скопирована в буфер обмена!');
-      } catch (error) {
-        alert('Не удалось скопировать информацию');
-      }
-    }
-  };
+  //   if (navigator.share) {
+  //     try {
+  //       await navigator.share({
+  //         title: 'Моя тренировка',
+  //         text: shareText
+  //       });
+  //     } catch (error) {
+  //       console.log('Sharing cancelled or failed');
+  //     }
+  //   } else {
+  //     try {
+  //       await navigator.clipboard.writeText(shareText);
+  //       alert('Информация о тренировке скопирована в буфер обмена!');
+  //     } catch (error) {
+  //       alert('Не удалось скопировать информацию');
+  //     }
+  //   }
+  // };
 
   const handleExerciseClick = (exerciseId: string) => {
     routeNavigator.push(`/exercise-detail/${exerciseId}`);
@@ -143,19 +248,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   return (
     <Panel id={id}>
-      <PanelHeader
-        before={<PanelHeaderBack onClick={() => routeNavigator.back()} />}
-        after={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <PanelHeaderButton onClick={handleShare} aria-label="Поделиться">
-              <Icon28ShareOutline />
-            </PanelHeaderButton>
-            <PanelHeaderButton onClick={handleEdit} aria-label="Редактировать">
-              <Icon28EditOutline />
-            </PanelHeaderButton>
-          </div>
-        }
-      > 
+      <PanelHeader before={<PanelHeaderBack onClick={() => routeNavigator.back()} />}> 
         <span className="train-sync-gradient-text">Тренировка</span>
       </PanelHeader>
 
@@ -163,15 +256,68 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
         <Div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text weight="1" style={{ fontSize: 24 }}>{workout.title}</Text>
-            <Badge
-              style={{ 
-                backgroundColor: getStatusColor(workoutDetails.status),
-                color: 'white'
-              }}
-            >
-              {getStatusText(workoutDetails.status)}
-            </Badge>
+            <div style={{ display: 'flex', flexDirection:'column', alignItems: 'center', gap: 8 }}>
+              {workoutTimeInfo && (
+                <div style={{
+                  padding: '4px 8px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  border: '1px solid rgba(76, 175, 80, 0.3)',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  color: '#4CAF50'
+                }}>
+                  {workoutTimeInfo.isStarted 
+                    ? `${workoutTimeInfo.elapsed}${workoutTimeInfo.total ? `/${workoutTimeInfo.total}` : ''} мин`
+                    : `Начало в ${workout.startTime}`
+                  }
+                </div>
+              )}
+              {/* <Chip
+              removable={false}
+                style={{ 
+                  backgroundColor: ,
+                  color: 'white'
+                }}
+              >
+                
+              </Chip> */}
+              <div style={{
+                  padding: '4px 8px',
+                  borderRadius: '8px',
+                  backgroundColor: getStatusColor(workoutDetails.status),
+                  border: '1px solid rgba(76, 175, 80, 0.3)',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  color: "white"
+                }}>
+                  {getStatusText(workoutDetails.status)}
+                </div>
+            </div>
           </div>
+          {workoutTimeInfo && workoutTimeInfo.total && workoutTimeInfo.isStarted && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ 
+                width: '100%', 
+                height: '6px', 
+                backgroundColor: '#E0E0E0', 
+                borderRadius: '3px', 
+                overflow: 'hidden' 
+              }}>
+                <div 
+                  style={{
+                    width: `${workoutTimeInfo.progress}%`,
+                    height: '100%',
+                    backgroundColor: workoutTimeInfo.isFinished ? '#4CAF50' : '#2196F3',
+                    transition: 'width 0.3s ease-in-out'
+                  }}
+                />
+              </div>
+              <Text style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                Прогресс тренировки: {Math.round(workoutTimeInfo.progress)}%
+              </Text>
+            </div>
+          )}
           {workout.description && (
             <Text style={{ fontSize: 16, opacity: 0.7 }}>{workout.description}</Text>
           )}
@@ -193,7 +339,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
                   <Text style={{ fontSize: 16, fontWeight: 'bold', color: 'var(--vkui--color_accent)' }}>
                     {new Date(workout.date).toLocaleDateString('ru-RU')}
                   </Text>
-                  <Text style={{ fontSize: 12, opacity: 0.7, display: 'block' }}>{workout.time}</Text>
+                  <Text style={{ fontSize: 12, opacity: 0.7, display: 'block' }}>{workout.startTime}</Text>
                 </div>
               </div>
             </Card>
@@ -203,7 +349,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
                 <Icon28LocationOutline style={{ color: '#9C27B0', fontSize: 32 }} />
                 <div>
                   <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#9C27B0' }}>
-                    {workout.gym}
+                    {workout.location || 'Не указано'}
                   </Text>
                   <Text style={{ fontSize: 12, opacity: 0.7, display: 'block' }}>зал</Text>
                 </div>
@@ -242,7 +388,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
               Группы мышц
             </Text>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {workoutDetails.muscleGroups.map((muscle, idx) => (
+              {workoutDetails.muscleGroups.map((muscle: any, idx: any) => (
                 <Chip 
                   key={idx} 
                   removable={false}
@@ -263,7 +409,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
       <Group header={<Header size="s">Упражнения ({workoutDetails.totalExercises})</Header>}>
         <Div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {workout.exercises.map((workoutExercise, idx) => (
+            {workout.exercises.map((workoutExercise: any, idx: any) => (
               <Card 
                 key={workoutExercise.exerciseId} 
                 mode="outline" 
@@ -285,7 +431,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
                       {idx + 1}. {workoutExercise.exercise.name}
                     </Text>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {workoutExercise.exercise.muscleGroup?.map((group, groupIdx) => (
+                      {Array.isArray(workoutExercise.exercise.muscleGroup) ? workoutExercise.exercise.muscleGroup.map((group: any, groupIdx: any) => (
                         <Badge 
                           key={groupIdx}
                           style={{ 
@@ -296,7 +442,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
                         >
                           {group}
                         </Badge>
-                      ))}
+                      )) : null}
                     </div>
                   </div>
                 </div>
@@ -307,7 +453,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
                   </Text>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {workoutExercise.sets.map((set, setIdx) => (
+                    {workoutExercise.sets.map((set: any, setIdx: any) => (
                       <div key={set.id} style={{
                         padding: 16,
                         background: 'var(--vkui--color_background_secondary)',
@@ -423,7 +569,7 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
         <Group header={<Header size="s">👥 Участники ({workout.participants.length})</Header>}>
           <Div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {workout.participants.map((participant) => (
+              {workout.participants.map((participant: any) => (
                 <Card key={participant.userId} mode="outline" style={{ padding: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Avatar 
@@ -461,18 +607,37 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
       <Group>
         <Div>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'flex',flexDirection:'column', gap: 12, marginBottom: 12 }}>
             {!workoutDetails.status.includes('completed') && (
-              <Button 
-                size="l" 
-                stretched 
-                mode="primary"
-                before={<Icon28CheckCircleOutline />}
-                onClick={handleMarkCompleted}
-                style={{ backgroundColor: '#4CAF50' }}
-              >
-                Отметить выполненной
-              </Button>
+              <>
+                <Button 
+                  size="l" 
+                  stretched 
+                  mode="primary"
+                  before={<Icon28CheckCircleOutline />}
+                  onClick={handleMarkCompleted}
+                  disabled={!timeCheck.canComplete}
+                  style={{ 
+                    backgroundColor: timeCheck.canComplete ? '#4CAF50' : '#ccc',
+                    cursor: timeCheck.canComplete ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {timeCheck.canComplete ? 'Отметить выполненной' : `Осталось ${timeCheck.timeLeft}`}
+                </Button>
+                {!timeCheck.canComplete && timeCheck.message && (
+                  <div style={{ 
+                    marginTop: 8, 
+                    padding: 12, 
+                    backgroundColor: '#FFF3E0', 
+                    borderRadius: 8,
+                    border: '1px solid #FFB74D'
+                  }}>
+                    <Text style={{ fontSize: 14, color: '#F57C00' }}>
+                      {timeCheck.message}
+                    </Text>
+                  </div>
+                )}
+              </>
             )}
           </div>
           <div style={{ display: 'flex', gap: 12 }}>

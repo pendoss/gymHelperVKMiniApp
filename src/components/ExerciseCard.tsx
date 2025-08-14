@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Card, Text, Div, Button, Avatar } from '@vkontakte/vkui';
 import { Icon28EditOutline } from '@vkontakte/icons';
-import { Exercise } from '../types';
+import { Exercise } from '../types/api';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 
 interface ExerciseCardProps {
@@ -50,29 +50,26 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
               {exercise.name}
             </Text>
             <Text style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>
-              {exercise.muscleGroup.join(', ')}
+              {exercise.muscleGroup}
             </Text>
             {exercise.description && (
               <Text style={{ fontSize: 14, marginBottom: 8 }}>
                 {exercise.description}
               </Text>
             )}
-            {exercise.equipment && exercise.equipment.length > 0 && (
+            {exercise.equipment && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-                {exercise.equipment.map((eq, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      background: 'var(--vkui--color_background_secondary)',
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
-                  >
-                    {eq}
-                  </div>
-                ))}
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '2px 8px',
+                    background: 'var(--vkui--color_background_secondary)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                >
+                  {exercise.equipment}
+                </div>
               </div>
             )}
           </div>

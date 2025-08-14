@@ -17,49 +17,48 @@ import { Icon28CrownOutline } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
+import { getUserStats, getMedalIcon, getPositionColor } from '../utils/leaderboardUtils';
 
 interface LeaderboardProps {
   className?: string;
 }
-
-const getMedalIcon = (position: number) => {
-  switch (position) {
-    case 1:
-      return '🥇';
-    case 2:
-      return '🥈';
-    case 3:
-      return '🥉';
-    default:
-      return null;
-  }
-};
-
-const getPositionColor = (position: number, isCurrentUser: boolean) => {
-  if (isCurrentUser) {
-    return '#4CAF50';
-  }
-  
-  switch (position) {
-    case 1:
-      return '#FFD700';
-    case 2:
-      return '#C0C0C0';
-    case 3:
-      return '#CD7F32';
-    default:
-      return 'transparent';
-  }
-};
 
 export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
   const store = useStore();
   const routeNavigator = useRouteNavigator();
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
   
-  const topLeaders = store.getTopLeaders(5);
-  const fullLeaderboard = store.getLeaderboard();
-  const currentUserPosition = store.getCurrentUserPosition();
+  const leaderboardData = getUserStats(store);
+  const topLeaders = leaderboardData.slice(0, 3);
+  const fullLeaderboard = leaderboardData;
+  const currentUserPosition = store.currentUser 
+    ? leaderboardData.find(user => String(user.id) === String(store.currentUser!.id))
+    : null;
+  
+  // Если нет данных для отображения, показываем заглушку
+  if (topLeaders.length === 0) {
+    return (
+      <Group
+        header={
+          <Header className="enhanced-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon28CrownOutline width={20} height={20} />
+              Лидерборд по тренировкам
+            </div>
+          </Header>
+        }
+        className={`enhanced-group ${className || ''}`}
+      >
+        <Div style={{ textAlign: 'center', padding: '20px' }}>
+          <Text style={{ color: '#666' }}>
+            Пока нет данных для отображения.
+            <br />
+            Создайте и завершите тренировки, чтобы увидеть рейтинг!
+          </Text>
+        </Div>
+      </Group>
+    );
+  }
   
   const renderUserCell = (user: any, isCurrentUser: boolean = false, showPosition: boolean = true) => {
     const medal = getMedalIcon(user.position);
@@ -135,19 +134,25 @@ export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
         }
         after={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Text weight="2" style={{ color: '#666' }}>
-              {user.workoutsThisWeek}
-            </Text>
-            
+            <div style={{ textAlign: 'right' }}>
+              <Text weight="2" style={{ color: '#666', fontSize: 16 }}>
+                {user.score} очков
+              </Text>
+              {user.qualityScore > 0 && (
+                <Text style={{ fontSize: 11, opacity: 0.6, display: 'block' }}>
+                  качество: {Math.round(user.qualityScore)}
+                </Text>
+              )}
+            </div>
           </div>
         }
-        subtitle={user.gym || 'Зал не указан'}
+        subtitle={`${user.workoutsCount} тренировок • ${user.completedWorkouts} завершено`}
       >
         <div style={{ 
           fontWeight: isCurrentUser ? 600 : 400,
           color: isCurrentUser ? '#4CAF50' : 'inherit'
         }}>
-          {user.first_name} {user.last_name}
+          {user.name}
           {isCurrentUser && ' (Вы)'}
         </div>
       </Cell>
@@ -174,7 +179,7 @@ export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
         <Group>
           <Div>
             {fullLeaderboard.map((user) => {
-              const isCurrentUser = user.id === store.currentUser?.id;
+              const isCurrentUser = !!(store.currentUser && String(user.id) === String(store.currentUser.id));
               return renderUserCell(user, isCurrentUser);
             })}
           </Div>
@@ -183,26 +188,37 @@ export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
     </ModalRoot>
   );
 
-  if (topLeaders.length === 0) {
-    return null;
-  }
-
   return (
     <>
       <Group
         header={
           <Header className="enhanced-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icon28CrownOutline width={20} height={20} />
-              Лидерборд по тренировкам
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon28CrownOutline width={20} height={20} />
+                Лидерборд по тренировкам
+              </div>
             </div>
           </Header>
         }
         className={`enhanced-group ${className || ''}`}
       >
         <Div>
+          <div style={{ 
+            padding: '12px', 
+            background: 'var(--vkui--color_background_secondary)', 
+            borderRadius: '8px', 
+            marginBottom: '16px',
+            fontSize: '13px',
+            opacity: 0.8
+          }}>
+            <Text style={{ fontSize: '13px' }}>
+              Рейтинг = Завершенные тренировки × 10 + Упражнения × 2 + Качество выполнения
+            </Text>
+          </div>
+          
           {topLeaders.map((user) => {
-            const isCurrentUser = user.id === store.currentUser?.id;
+            const isCurrentUser = !!(store.currentUser && String(user.id) === String(store.currentUser.id));
             return renderUserCell(user, isCurrentUser);
           })}
           

@@ -27,7 +27,8 @@ import { Icon24Dismiss } from "@vkontakte/icons";
 import { FriendCard } from "../components/FriendCard";
 import { ExerciseSelector } from "../components/ExerciseSelector";
 import { useStore } from "../stores/StoreContext";
-import { Exercise, Friend, Set, Workout, WorkoutExercise } from "../types";
+import { Friend } from "../types";
+import { Exercise, ExerciseSet, WorkoutExercise, Workout } from "../types/api";
 
 export interface WorkoutEditProps {
     id: string;
@@ -39,30 +40,36 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
     const params = useParams<'workoutId'>();
     const workoutId = params?.workoutId;
     const existingWorkout = workoutId ? 
-        (store.getUserWorkouts().find(w => w.id === workoutId) || store.workouts.find(w => w.id === workoutId)) 
-        : null;
+        store.getWorkoutById(+workoutId) as any : null;
     const [title, setTitle] = useState(existingWorkout?.title || "");
     const [description, setDescription] = useState(existingWorkout?.description || "");
     const [date, setDate] = useState(existingWorkout ? new Date(existingWorkout.date) : new Date());
-    const [time, setTime] = useState(existingWorkout?.time || "");
-    const [gym, setGym] = useState(existingWorkout?.gym || "");
-    const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
-    const [exerciseSets, setExerciseSets] = useState<Record<string, Set[]>>({});
+    const [time, setTime] = useState(existingWorkout?.startTime || "");
+    const [gym, setGym] = useState(existingWorkout?.location || "");
+    const [selectedExercises, setSelectedExercises] = useState<{ exerciseId: number; exercise: Exercise; sets: ExerciseSet[] }[]>([]);
     const [selectedParticipants, setSelectedParticipants] = useState<Friend[]>([]);
     const [friendSearch, setFriendSearch] = useState("");
     const [activeTab, setActiveTab] = useState<"exercises" | "friends">("exercises");
     const [showExerciseSelector, setShowExerciseSelector] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [estimatedDuration, setEstimatedDuration] = useState('');
 
     useEffect(() => {
         if (existingWorkout) {
-            setSelectedExercises(existingWorkout.exercises.map((we: WorkoutExercise) => we.exercise));
-            const sets: Record<string, Set[]> = {};
-            existingWorkout.exercises.forEach((we: WorkoutExercise) => {
-                sets[we.exercise.id] = we.sets;
-            });
-            setExerciseSets(sets);
-            const participantFriends = existingWorkout.participants.map(p => ({
+            const exercisesWithSets = existingWorkout.exercises.map((we: WorkoutExercise) => ({
+                exerciseId: we.exerciseId,
+                exercise: we.exercise,
+                sets: we.sets.map(set => ({
+                    id: Number(set.id),
+                    reps: set.reps,
+                    weight: set.weight,
+                    duration: set.duration,
+                    distance: set.distance
+                }))
+            }));
+            setSelectedExercises(exercisesWithSets);
+            
+            const participantFriends = existingWorkout.participants.map((p: any) => ({
                 id: p.userId,
                 first_name: p.user.first_name,
                 last_name: p.user.last_name,
@@ -77,9 +84,9 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
 
     if (!workoutId || !existingWorkout) {
         return (
-            <Panel id={id}>
+            <Panel id={id.toString()}>
                 <PanelHeader before={<PanelHeaderBack onClick={() => routeNavigator.back()} />}>
-                    Редактирование тренировки
+                    Редактирование
                 </PanelHeader>
                 <Div>Тренировка не найдена</Div>
             </Panel>
@@ -92,21 +99,16 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
             !selectedParticipants.find((selected: Friend) => selected.id === friend.id)
     );
 
-    const handleExerciseAdd = (exercise: Exercise, sets: Set[]) => {
-        setSelectedExercises(prev => [...prev, exercise]);
-        setExerciseSets(prev => ({
-            ...prev,
-            [exercise.id]: sets
-        }));
-    };
+    // const handleExerciseAdd = (exercise: Exercise, sets: Set[]) => {
+    //     setSelectedExercises(prev => [...prev, exercise]);
+    //     setExerciseSets(prev => ({
+    //         ...prev,
+    //         [exercise.id]: sets
+    //     }));
+    // };
 
-    const handleExerciseRemove = (exerciseId: string) => {
-        setSelectedExercises(prev => prev.filter(ex => ex.id !== exerciseId));
-        setExerciseSets(prev => {
-            const newSets = { ...prev };
-            delete newSets[exerciseId];
-            return newSets;
-        });
+    const handleExerciseRemove = (exerciseId: number) => {
+        setSelectedExercises(prev => prev.filter(ex => ex.exerciseId !== exerciseId));
     };
 
     const handleFriendToggle = (friend: Friend) => {
@@ -128,21 +130,24 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
 
         setIsUpdating(true);
         try {
-            const workoutExercises: WorkoutExercise[] = selectedExercises.map((exercise) => ({
-                exerciseId: exercise.id,
-                exercise,
-                sets: exerciseSets[exercise.id] || [],
+            const workoutExercises: WorkoutExercise[] = selectedExercises.map((exerciseData, index) => ({
+                id: Date.now() + index, // Генерируем уникальный ID для связи
+                exerciseId: exerciseData.exerciseId,
+                exercise: exerciseData.exercise,
+                sets: exerciseData.sets,
+                order: index + 1,
+                completed: false
             }));
 
             const updatedWorkout: Workout = {
                 ...existingWorkout,
                 title,
                 description,
-                date,
-                time,
-                gym,
+                date: typeof date === 'string' ? date : date.toISOString(),
+                startTime: time,
+                location: gym,
                 exercises: workoutExercises,
-                participants: selectedParticipants.map(friend => ({
+                participants: selectedParticipants.map((friend: any) => ({
                     userId: friend.id,
                     user: {
                         id: friend.id,
@@ -157,8 +162,7 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                 }))
             };
 
-            // Проверяем, это пользовательская тренировка или общая
-            const isUserWorkout = store.getUserWorkouts().find(w => w.id === existingWorkout.id);
+            const isUserWorkout = store.getUserWorkouts().find(w => String(w.id) === String(existingWorkout.id));
             if (isUserWorkout) {
                 store.updateUserWorkout(existingWorkout.id, updatedWorkout);
             } else {
@@ -178,7 +182,7 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
     };
 
     return (
-        <Panel id={id}>
+        <Panel id={id.toString()}>
             <PanelHeader before={<PanelHeaderBack onClick={handleCancel} />}>
                 Редактирование тренировки
             </PanelHeader>
@@ -213,6 +217,15 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                         onChange={(e) => setTime(e.target.value)}
                         placeholder="Время тренировки (например, 18:00)"
                     />
+                </FormItem>
+
+                <FormItem top="Примерное время тренировки (мин)">
+                <Input
+                    type="number"
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(e.target.value)}
+                    placeholder="60"
+                />
                 </FormItem>
 
                 <FormItem top="Зал">
@@ -251,22 +264,22 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                             Добавить упражнение
                         </Button>
 
-                        {selectedExercises.map((exercise) => (
-                            <Card key={exercise.id} style={{ marginBottom: 8 }}>
+                        {selectedExercises.map((exerciseData) => (
+                            <Card key={exerciseData.exerciseId} style={{ marginBottom: 8 }}>
                                 <Div>
                                     <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-                                        {exercise.name}
+                                        {exerciseData.exercise.name}
                                     </div>
                                     <div style={{ fontSize: 14, color: "var(--vkui--color_text_secondary)", marginBottom: 8 }}>
-                                        {exercise.muscleGroup.join(", ")}
+                                        {exerciseData.exercise.muscleGroup.join(", ")}
                                     </div>
                                     <div style={{ fontSize: 14, marginBottom: 8 }}>
-                                        Подходы: {exerciseSets[exercise.id]?.length || 0}
+                                        Подходы: {exerciseData.sets.length}
                                     </div>
                                     <Button
                                         size="s"
                                         mode="secondary"
-                                        onClick={() => handleExerciseRemove(exercise.id)}
+                                        onClick={() => handleExerciseRemove(exerciseData.exerciseId)}
                                     >
                                         Удалить
                                     </Button>
@@ -350,9 +363,10 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                 >
                     <ExerciseSelector
                         selectedExercises={selectedExercises}
-                        exerciseSets={exerciseSets}
-                        onExerciseAdd={handleExerciseAdd}
-                        onExerciseRemove={handleExerciseRemove}
+                        onExercisesChange={(exercises) => {
+                          setSelectedExercises(exercises);
+                        }}
+                        onClose={() => setShowExerciseSelector(false)}
                     />
                     <Spacing size={80} />
                 </ModalPage>

@@ -1,3 +1,7 @@
+// Base API configuration
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.gymhelper.local';
+export const VK_API_VERSION = '5.199';
+
 // API endpoints configuration
 export const API_ENDPOINTS = {
   // Authentication

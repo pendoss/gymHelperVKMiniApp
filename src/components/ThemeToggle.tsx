@@ -9,7 +9,7 @@ export const ThemeToggle: FC = observer(() => {
 
   return (
     <IconButton onClick={store.toggleTheme}>
-      {store.theme.mode === 'dark' ? <Icon28SunOutline /> : <Icon28MoonOutline />}
+      {store.theme === 'dark' ? <Icon28SunOutline /> : <Icon28MoonOutline />}
     </IconButton>
   );
 });

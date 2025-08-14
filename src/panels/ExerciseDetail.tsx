@@ -24,7 +24,7 @@ import { useRouteNavigator, useParams } from '@vkontakte/vk-mini-apps-router';
 import { useStore } from '../stores/StoreContext';
 import { NavBar } from '../components/NavBar';
 import { SetSelector } from '../components/SetSelector';
-import { Set } from '../types';
+import { Exercise, ExerciseSet } from '../types/api';
 
 export interface ExerciseDetailProps extends NavIdProps {}
 
@@ -36,7 +36,7 @@ export const ExerciseDetail: FC<ExerciseDetailProps> = observer(({ id }) => {
 
   // Получаем exerciseId из параметров роута
   const exerciseId = params?.exerciseId || '1';
-  const exercise = store.exercises.find((e: any) => e.id === exerciseId);
+  const exercise = store.exercises.exercises.find((e: Exercise) => String(e.id) === String(exerciseId));
 
   if (!exercise) {
     return (
@@ -52,12 +52,12 @@ export const ExerciseDetail: FC<ExerciseDetailProps> = observer(({ id }) => {
     );
   }
 
-  const workoutsWithExercise = store.workouts.filter(workout => 
-    workout.exercises.some(workoutExercise => workoutExercise.exerciseId === exerciseId)
+  const workoutsWithExercise = store.getUserWorkouts().filter((workout: any) => 
+    workout.exercises.some((workoutExercise: any) => String(workoutExercise.exerciseId) === String(exerciseId))
   );
 
   const workoutGroups = workoutsWithExercise.map(workout => {
-    const workoutExercise = workout.exercises.find(ex => ex.exerciseId === exerciseId);
+    const workoutExercise = workout.exercises.find((ex: any) => String(ex.exerciseId) === String(exerciseId));
     if (!workoutExercise) return null;
     
     return {
@@ -116,9 +116,9 @@ const calculateExerciseStats = () => {
     // Вес: ближе к верхней границе — сложнее
     if (avgWeight !== undefined) {
         let ratio: number | undefined;
-        if (hasRange) {
-            const span = Math.max(1, (exercise.maxWeight as number) - (exercise.minWeight as number));
-            ratio = (avgWeight - (exercise.minWeight as number)) / span; 
+        if (hasRange && exercise.minWeight !== undefined && exercise.maxWeight !== undefined) {
+            const span = Math.max(1, exercise.maxWeight - exercise.minWeight);
+            ratio = (avgWeight - exercise.minWeight) / span; 
         } else if (histMaxWeight) {
             ratio = avgWeight / histMaxWeight;
         }
@@ -189,7 +189,7 @@ const calculateExerciseStats = () => {
 //   };
 
 
-  const handleSetSelectionComplete = (selectedSets: Set[]) => {
+  const handleSetSelectionComplete = (selectedSets: ExerciseSet[]) => {
     store.setPendingExerciseForWorkout(exercise, selectedSets);
     routeNavigator.push('/create');
   };
@@ -202,7 +202,7 @@ const calculateExerciseStats = () => {
         exerciseName={exercise.name}
         existingSets={sortedWorkoutGroups.map(group => ({
           workoutTitle: group!.workoutTitle,
-          workoutDate: group!.workoutDate,
+          workoutDate: new Date(group!.workoutDate),
           sets: group!.sets
         }))}
         onConfirm={handleSetSelectionComplete}
@@ -353,7 +353,7 @@ const calculateExerciseStats = () => {
                 <Text style={{ fontSize: 14, opacity: 0.8 }}>Оборудование</Text>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {exercise.equipment && exercise.equipment.length > 0 ? (
-                    exercise.equipment.map((eq, index) => (
+                    exercise.equipment.map((eq: string, index: number) => (
                       <Chip key={index} removable={false} style={{ padding: '4px 12px', borderRadius: 16 }}>
                         {eq}
                       </Chip>
@@ -400,8 +400,8 @@ const calculateExerciseStats = () => {
         <Div>
           {exercise.steps && exercise.steps.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {exercise.steps.map((step) => (
-                <Card key={step.id} mode="outline" className="enhanced-card" style={{ padding: 16 }}>
+              {exercise.steps.map((step: any, index: number) => (
+                <Card key={step.id || index} mode="outline" className="enhanced-card" style={{ padding: 16 }}>
                   <div style={{ 
                     display: 'flex', 
                     gap: 16, 
@@ -421,7 +421,7 @@ const calculateExerciseStats = () => {
                       flexShrink: 0,
                       boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
                     }}>
-                      {step.stepNumber}
+                      {step.stepNumber || index + 1}
                     </div>
                     <div style={{ flex: 1 }}>
                       <Text style={{ 
@@ -429,7 +429,45 @@ const calculateExerciseStats = () => {
                         lineHeight: 1.6,
                         color: 'var(--vkui--color_text_primary)'
                       }}>
-                        {step.description}
+                        {step.description || step}
+                      </Text>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : exercise.instructions && Array.isArray(exercise.instructions) ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {exercise.instructions.map((instruction: string, index: number) => (
+                <Card key={index} mode="outline" className="enhanced-card" style={{ padding: 16 }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: 16, 
+                    alignItems: 'flex-start'
+                  }}>
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      background: 'var(--train-sync-gradient)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
+                    }}>
+                      {index + 1}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Text style={{ 
+                        fontSize: 16, 
+                        lineHeight: 1.6,
+                        color: 'var(--vkui--color_text_primary)'
+                      }}>
+                        {instruction}
                       </Text>
                     </div>
                   </div>
@@ -454,8 +492,8 @@ const calculateExerciseStats = () => {
         <Div>
           {exercise.recommendations && exercise.recommendations.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {exercise.recommendations.map((recommendation) => (
-                <Card key={recommendation.id} mode="outline" style={{ 
+              {exercise.recommendations.map((recommendation: any, index: number) => (
+                <Card key={recommendation.id || index} mode="outline" style={{ 
                   padding: 16,
                   background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.05) 0%, rgba(233, 30, 99, 0.05) 100%)',
                   border: '1px solid rgba(156, 39, 176, 0.1)'
@@ -477,7 +515,38 @@ const calculateExerciseStats = () => {
                       fontSize: 15,
                       color: 'var(--vkui--color_text_primary)'
                     }}>
-                      {recommendation.text}
+                      {recommendation.text || recommendation}
+                    </Text>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (exercise.recomendations && Array.isArray(exercise.recomendations)) ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {exercise.recomendations.map((recomendation: string, index: number) => (
+                <Card key={index} mode="outline" style={{ 
+                  padding: 16,
+                  background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.05) 0%, rgba(233, 30, 99, 0.05) 100%)',
+                  border: '1px solid rgba(156, 39, 176, 0.1)'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: 12, 
+                    alignItems: 'flex-start'
+                  }}>
+                    <Icon28CheckCircleOutline style={{
+                      color: '#9C27B0',
+                      fontSize: 20,
+                      marginTop: 2,
+                      flexShrink: 0
+                    }} />
+                    <Text style={{ 
+                      flex: 1, 
+                      lineHeight: 1.6,
+                      fontSize: 15,
+                      color: 'var(--vkui--color_text_primary)'
+                    }}>
+                      {recomendation}
                     </Text>
                   </div>
                 </Card>

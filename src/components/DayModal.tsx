@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import React, { FC, useState } from 'react';
 import {
   ModalRoot,
   ModalCard,
@@ -9,10 +9,9 @@ import {
   Cell,
   Avatar,
   Spacing,
-  Chip,
 } from '@vkontakte/vkui';
 import { Icon28AddOutline, Icon28EditOutline, Icon28DeleteOutline } from '@vkontakte/icons';
-import { Workout, WorkoutParticipant } from '../types';
+import { Workout } from '../types/api';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { observer } from 'mobx-react-lite';
@@ -26,6 +25,12 @@ interface DayModalProps {
 export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }) => {
   const store = useStore();
   const routeNavigator = useRouteNavigator();
+  const [deleteAlert, setDeleteAlert] = useState<{
+    show: boolean;
+    workoutId?: number;
+    workoutTitle?: string;
+  }>({ show: false });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('ru', {
@@ -35,151 +40,189 @@ export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }
     });
   };
 
-  const getParticipantStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return '#4CAF50';
-      case 'pending': return '#FF9800';
-      case 'declined': return '#F44336';
-      case 'in_progress': return '#2196F3';
-      default: return '#9E9E9E';
-    }
-  };
-
-  const getParticipantStatusText = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'Принял';
-      case 'pending': return 'Ожидает';
-      case 'declined': return 'Отклонил';
-      case 'in_progress': return 'В процессе';
-      case 'completed': return 'Завершил';
-      default: return status;
-    }
-  };
-
   const handleCreateWorkout = () => {
     onClose();
     routeNavigator.push('/create');
   };
 
-  const handleEditWorkout = (workoutId: string) => {
+  const handleEditWorkout = (workoutId: number) => {
+    routeNavigator.push(`/workout-edit/${workoutId}`);
     onClose();
-    routeNavigator.push(`/edit-workout/${workoutId}`);
   };
 
-  const handleDeleteWorkout = (workoutId: string) => {
-    if (confirm('Вы уверены, что хотите удалить эту тренировку?')) {
-      store.deleteWorkout(workoutId);
-      onClose();
+  const handleDeleteWorkout = (workoutId: number) => {
+    const workout = workouts.find(w => w.id === workoutId);
+    setDeleteAlert({
+      show: true,
+      workoutId,
+      workoutTitle: workout?.title || 'тренировку'
+    });
+  };
+
+  const confirmDeleteWorkout = async () => {
+    if (!deleteAlert.workoutId) return;
+
+    try {
+      setIsDeleting(true);
+      const success = await store.workouts.deleteWorkout(deleteAlert.workoutId);
+      
+      if (success) {
+        // Закрываем alert и основное модальное окно
+        setDeleteAlert({ show: false });
+        onClose();
+      }
+    } catch (error) {
+      console.error('Ошибка при удалении тренировки:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  return (
-    <ModalRoot activeModal="day-modal" onClose={onClose}>
-      <ModalCard id="day-modal" onClose={onClose}>
-        <Div>
-          <Text weight="2" style={{ marginBottom: 16, fontSize: 18 }}>
-            {formatDate(date)}
-          </Text>
+  const cancelDeleteWorkout = () => {
+    setDeleteAlert({ show: false });
+  };
 
-          {workouts.length === 0 ? (
-            <Group>
-              <Div>
-                <Text weight="2" style={{ textAlign: 'center', marginBottom: 16 }}>
-                  На этот день тренировки не запланированы
-                </Text>
+  return (
+    <>
+      <ModalRoot activeModal="day-modal" onClose={onClose}  >
+        <ModalCard id="day-modal" onClose={onClose}
+        actions={
+          <React.Fragment>
+            <Text weight="2" style={{ marginBottom: 16, fontSize: 18 }}>
+              {formatDate(date)}
+            </Text>
+
+            {workouts.length === 0 ? (
+              <Group>
+                <Div>
+                  <Text weight="2" style={{ textAlign: 'center', marginBottom: 16 }}>
+                    На этот день тренировки не запланированы
+                  </Text>
+                  <Button
+                    size="l"
+                    stretched
+                    before={<Icon28AddOutline />}
+                    onClick={handleCreateWorkout}
+                  >
+                    Создать тренировку
+                  </Button>
+                </Div>
+              </Group>
+            ) : (
+              <Group>
+                {workouts.map((workout) => (
+                  <div key={workout.id}>
+                    <Cell
+                      multiline
+                      subtitle={`${workout.startTime || '00:00'} • ${(workout as any).gym || workout.title || 'Тренировка'} • ${workout.exercises.length} упражнений`}
+                      after={
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <Button
+                            size="s"
+                            mode="tertiary"
+                            before={<Icon28EditOutline />}
+                            onClick={() => handleEditWorkout(workout.id)}
+                            aria-label="Редактировать тренировку"
+                          />
+                          <Button
+                            size="s"
+                            mode="tertiary"
+                            before={<Icon28DeleteOutline />}
+                            onClick={() => handleDeleteWorkout(workout.id)}
+                            aria-label="Удалить тренировку"
+                          />
+                        </div>
+                      }
+                    >
+                      {workout.title}
+                    </Cell>
+
+                    {workout.participants && workout.participants.length > 0 && (
+                      <Div style={{ paddingTop: 0 }}>
+                        <Text weight="2" style={{ marginBottom: 8, fontSize: 14 }}>
+                          Участники:
+                        </Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {workout.participants.map((participant) => (
+                            <div
+                              key={participant.userId}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '4px 8px',
+                                backgroundColor: 'var(--vkui--color_background_secondary)',
+                                borderRadius: 12,
+                                fontSize: 12
+                              }}
+                            >
+                              <Avatar size={20} src={participant.user.photo_200} />
+                              <Text style={{ fontSize: 12 }}>
+                                {participant.user.first_name} {participant.user.last_name}
+                              </Text>
+                            </div>
+                          ))}
+                        </div>
+                      </Div>
+                    )}
+
+                    <Spacing size={16} />
+                  </div>
+                ))}
+
                 <Button
                   size="l"
                   stretched
+                  mode="secondary"
                   before={<Icon28AddOutline />}
                   onClick={handleCreateWorkout}
                 >
-                  Создать тренировку
+                  Добавить тренировку
                 </Button>
-              </Div>
-            </Group>
-          ) : (
-            <Group>
-              {workouts.map((workout) => (
-                <div key={workout.id}>
-                  <Cell
-                    multiline
-                    subtitle={`${workout.time} • ${workout.gym} • ${workout.exercises.length} упражнений`}
-                    after={
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button
-                          size="s"
-                          mode="tertiary"
-                          before={<Icon28EditOutline />}
-                          onClick={() => handleEditWorkout(workout.id)}
-                          aria-label="Редактировать тренировку"
-                        />
-                        <Button
-                          size="s"
-                          mode="tertiary"
-                          before={<Icon28DeleteOutline />}
-                          onClick={() => handleDeleteWorkout(workout.id)}
-                          aria-label="Удалить тренировку"
-                        />
-                      </div>
-                    }
-                  >
-                    {workout.title}
-                  </Cell>
+              </Group>
+            )}
+          </React.Fragment>
+        } />
+  
+      </ModalRoot>
 
-                  {workout.participants.length > 0 && (
-                    <Div style={{ paddingTop: 0 }}>
-                      <Text weight="2" style={{ marginBottom: 8, fontSize: 14 }}>
-                        Участники:
-                      </Text>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {workout.participants.map((participant: WorkoutParticipant) => (
-                          <div
-                            key={participant.userId}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '4px 8px',
-                              background: 'var(--vkui--color_background_secondary)',
-                              borderRadius: 16,
-                            }}
-                          >
-                            <Avatar size={20} src={participant.user.photo_200} />
-                            <Text style={{ fontSize: 14 }}>
-                              {participant.user.first_name} {participant.user.last_name}
-                            </Text>
-                            <Chip
-                              style={{
-                                backgroundColor: getParticipantStatusColor(participant.status),
-                                color: 'white',
-                                fontSize: 12,
-                              }}
-                            >
-                              {getParticipantStatusText(participant.status)}
-                            </Chip>
-                          </div>
-                        ))}
-                      </div>
-                    </Div>
-                  )}
-
-                  <Spacing size={16} />
-                </div>
-              ))}
-
+      {deleteAlert.show && (
+        <ModalRoot activeModal="delete-alert">
+          <ModalCard
+            id="delete-alert"
+            onClose={cancelDeleteWorkout}
+            actions={[
               <Button
+                key="cancel"
                 size="l"
-                stretched
                 mode="secondary"
-                before={<Icon28AddOutline />}
-                onClick={handleCreateWorkout}
+                onClick={cancelDeleteWorkout}
               >
-                Добавить тренировку
+                Отмена
+              </Button>,
+              <Button
+                key="delete"
+                size="l"
+                mode="primary"
+                loading={isDeleting}
+                onClick={confirmDeleteWorkout}
+              >
+                Удалить
               </Button>
-            </Group>
-          )}
-        </Div>
-      </ModalCard>
-    </ModalRoot>
+            ]}
+          >
+            <Div>
+              <Text weight="2" style={{ marginBottom: 16 }}>
+                Удаление тренировки
+              </Text>
+              <Text>
+                Вы уверены, что хотите удалить {deleteAlert.workoutTitle}? Это действие нельзя отменить.
+              </Text>
+            </Div>
+          </ModalCard>
+        </ModalRoot>
+      )}
+
+    </>
   );
 });

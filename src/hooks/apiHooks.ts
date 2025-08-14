@@ -13,7 +13,7 @@ export const useApiData = <T>(
   const fetchData = useCallback(async (...args: any[]) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await apiCall(...args);
       setData(response.data);
@@ -53,7 +53,7 @@ export const useApiMutation = <TRequest, TResponse>(
   const mutate = useCallback(async (data: TRequest): Promise<TResponse> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await apiCall(data);
       return response.data;
@@ -93,7 +93,7 @@ export const usePagination = <T>(
   ) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const currentPage = resetData ? 1 : page;
       const response = await apiCall({
@@ -111,11 +111,11 @@ export const usePagination = <T>(
 
       setTotal(response.total);
       setHasMore(response.data.length === (params.limit || 20));
-      
+
       if (!resetData) {
         setPage(prev => prev + 1);
       }
-      
+
       return response;
     } catch (err) {
       const errorMessage = apiService.handleApiError(err);
@@ -170,7 +170,7 @@ export const useVKAuth = () => {
   const login = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await apiService.initializeVKAuth();
       if (result) {
@@ -222,7 +222,6 @@ export const useDebounce = <T>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
-// Хук для работы с формами
 export const useForm = <T extends Record<string, any>>(
   initialValues: T,
   validationRules?: Record<keyof T, (value: any) => string | null>
@@ -233,8 +232,6 @@ export const useForm = <T extends Record<string, any>>(
 
   const setValue = useCallback((name: keyof T, value: any) => {
     setValues(prev => ({ ...prev, [name]: value }));
-    
-    // Валидация поля
     if (validationRules && validationRules[name]) {
       const error = validationRules[name](value);
       setErrors(prev => ({ ...prev, [name]: error }));
@@ -247,10 +244,10 @@ export const useForm = <T extends Record<string, any>>(
 
   const validate = useCallback(() => {
     if (!validationRules) return true;
-    
+
     const newErrors: Partial<Record<keyof T, string>> = {};
     let isValid = true;
-    
+
     Object.keys(validationRules).forEach(key => {
       const fieldKey = key as keyof T;
       const error = validationRules[fieldKey](values[fieldKey]);
@@ -259,7 +256,7 @@ export const useForm = <T extends Record<string, any>>(
         isValid = false;
       }
     });
-    
+
     setErrors(newErrors);
     return isValid;
   }, [validationRules, values]);

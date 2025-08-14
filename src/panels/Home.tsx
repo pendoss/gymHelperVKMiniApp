@@ -18,6 +18,7 @@ import { Icon28AddOutline, Icon28MoonOutline, Icon28SunOutline } from "@vkontakt
 import { UserInfo } from "@vkontakte/vk-bridge";
 import { observer } from "mobx-react-lite";
 import { Calendar } from "../components/Calendar";
+import { Leaderboard } from "../components/Leaderboard";
 import { useStore } from "../stores/StoreContext";
 import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
 
@@ -29,8 +30,11 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
     const store = useStore();
     const { photo_200, city, first_name, last_name } = { ...fetchedUser };
     const routeNavigator = useRouteNavigator();
-    const upcomingWorkouts = store.workouts
-        .filter((workout) => new Date(workout.date) >= new Date())
+    const upcomingWorkouts = store.getUserWorkouts()
+        .filter((workout) => {
+            // Показываем только будущие тренировки
+            return new Date(workout.date) >= new Date();
+        })
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 3);
 
@@ -159,7 +163,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                 <Div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                         <div className="stats-card">
-                            <div className="stats-number">{store.workouts.length}</div>
+                            <div className="stats-number">{store.achievements.totalWorkouts}</div>
                             <div className="stats-label">Всего тренировок</div>
                         </div>
                         <div className="stats-card">
@@ -169,6 +173,8 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                     </div>
                 </Div>
             </Group>
+
+            <Leaderboard />
 
             {/* <Group header={<Header className="enhanced-header">Настройки</Header>} className="enhanced-group">
         <Div>

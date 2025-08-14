@@ -88,6 +88,20 @@ export interface WorkoutParticipant {
 
 export type ParticipantStatus = 'pending' | 'accepted' | 'declined' | 'in_progress' | 'completed';
 
+export interface WorkoutInvitation {
+  id: string;
+  workoutId: string;
+  fromUserId: number;
+  fromUserName: string;
+  toUserId: number;
+  status: 'pending' | 'accepted' | 'declined';
+  sentAt: Date;
+  respondedAt?: Date;
+  createdAt: Date;
+  updatedAt?: Date;
+  workout?: Workout;
+}
+
 export interface Friend {
   id: number;
   first_name: string;
@@ -119,3 +133,4 @@ export interface CalendarDay {
   hasWorkout: boolean;
   workouts: Workout[];
 }
+

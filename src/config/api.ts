@@ -23,7 +23,7 @@ export const API_ENDPOINTS = {
     BASE: '/workouts',
     BY_ID: (id: string) => `/workouts/${id}`,
     COMPLETE: (id: string) => `/workouts/${id}/complete`,
-    PARTICIPANT_RESPOND: (workoutId: string, userId: number) => 
+    PARTICIPANT_RESPOND: (workoutId: string, userId: number) =>
       `/workouts/${workoutId}/participants/${userId}/respond`,
   },
 
@@ -92,3 +92,4 @@ export const FEATURE_FLAGS = {
   OFFLINE_MODE: false,
   DEBUG_MODE: import.meta.env.MODE === 'development',
 } as const;
+

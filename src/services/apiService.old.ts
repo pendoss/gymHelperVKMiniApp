@@ -1,10 +1,13 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import bridge from '@vkontakte/vk-bridge';
+import { vkApiService } from './vkApiService';
+import { FEATURE_FLAGS, TIMEOUTS } from '../config/api';
 
 // Интерфейсы для API запросов и ответов
 export interface ApiResponse<T> {
   data: T;
   message?: string;
+  success: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -12,11 +15,14 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   limit: number;
+  hasMore: boolean;
 }
 
 export interface AuthResponse {
   user: any; // User interface from types
   access_token: string;
+  refresh_token?: string;
+  expires_in: number;
 }
 
 export interface LoginRequest {
@@ -40,18 +46,37 @@ class ApiService {
 
     this.api = axios.create({
       baseURL,
-      timeout: 10000,
+      timeout: TIMEOUTS.DEFAULT,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     });
 
+    this.setupInterceptors();
+  }
+
+  /**
+   * Настройка interceptors для обработки запросов и ответов
+   */
+  private setupInterceptors(): void {
     // Interceptor для добавления токена аутентификации
     this.api.interceptors.request.use(
       (config) => {
         if (this.accessToken) {
           config.headers.Authorization = `Bearer ${this.accessToken}`;
         }
+        
+        // Добавляем VK токен если доступен
+        const vkToken = vkApiService.getAccessToken();
+        if (vkToken) {
+          config.headers['X-VK-Token'] = vkToken;
+        }
+        
+        if (FEATURE_FLAGS.DEBUG_MODE) {
+          console.log('🚀 API Request:', config.method?.toUpperCase(), config.url, config.data);
+        }
+        
         return config;
       },
       (error) => {
@@ -59,19 +84,151 @@ class ApiService {
       }
     );
 
-    // Interceptor для обработки ошибок
+    // Interceptor для обработки ответов и ошибок
     this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        // Если токен недействителен, можно попробовать обновить его
-        if (error.response?.status === 401) {
-          this.accessToken = null;
-          // Здесь можно добавить логику перенаправления на экран входа
-          console.error('Unauthorized access - token expired or invalid');
+      (response) => {
+        if (FEATURE_FLAGS.DEBUG_MODE) {
+          console.log('✅ API Response:', response.config.url, response.data);
         }
+        return response;
+      },
+      async (error) => {
+        if (FEATURE_FLAGS.DEBUG_MODE) {
+          console.error('❌ API Error:', error.config?.url, error.response?.data || error.message);
+        }
+
+        // Если токен недействителен, пытаемся обновить его
+        if (error.response?.status === 401 && this.accessToken) {
+          this.accessToken = null;
+          
+          // Пытаемся переинициализировать VK аутентификацию
+          try {
+            const authResult = await this.initializeVKAuth();
+            if (authResult && error.config) {
+              // Повторяем исходный запрос с новым токеном
+              error.config.headers.Authorization = `Bearer ${authResult.access_token}`;
+              return this.api.request(error.config);
+            }
+          } catch (refreshError) {
+            console.error('Failed to refresh token:', refreshError);
+            // Здесь можно добавить логику перенаправления на экран входа
+            this.handleAuthFailure();
+          }
+        }
+        
         return Promise.reject(error);
       }
     );
+  }
+
+  /**
+   * Обработка ошибки аутентификации
+   */
+  private handleAuthFailure(): void {
+    // Очищаем токены
+    this.accessToken = null;
+    
+    // Очищаем localStorage
+    localStorage.removeItem('gym_helper_access_token');
+    localStorage.removeItem('gym_helper_user_data');
+    
+    // В реальном приложении здесь можно показать уведомление о необходимости повторной авторизации
+    console.warn('Authentication failed - user needs to login again');
+  }
+
+  // === UTILITY METHODS ===
+
+  /**
+   * Установка токена доступа
+   */
+  setAccessToken(token: string): void {
+    this.accessToken = token;
+    localStorage.setItem('gym_helper_access_token', token);
+  }
+
+  /**
+   * Получение токена доступа
+   */
+  getAccessToken(): string | null {
+    return this.accessToken || localStorage.getItem('gym_helper_access_token');
+  }
+
+  /**
+   * Проверка, использует ли приложение реальный API
+   */
+  isUsingBackendAPI(): boolean {
+    return FEATURE_FLAGS.USE_BACKEND_API;
+  }
+
+  // === AUTHENTICATION ===
+
+  /**
+   * Авторизация пользователя через VK
+   */
+  async login(loginData: LoginRequest): Promise<AuthResponse> {
+    if (!FEATURE_FLAGS.USE_BACKEND_API) {
+      // Мокируем ответ для разработки
+      const mockResponse: AuthResponse = {
+        user: {
+          id: loginData.vk_user_id,
+          vk_id: loginData.vk_user_id,
+          first_name: loginData.user_info.first_name,
+          last_name: loginData.user_info.last_name,
+          photo_200: loginData.user_info.photo_200,
+          city: loginData.user_info.city,
+          level: 'beginner',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        access_token: 'mock_token_' + Date.now(),
+        expires_in: 3600
+      };
+
+      this.setAccessToken(mockResponse.access_token);
+      return mockResponse;
+    }
+
+    const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/vk-login', loginData);
+    
+    // Сохраняем токен для последующих запросов
+    this.setAccessToken(response.data.access_token);
+    
+    return response.data;
+  }
+
+  /**
+   * Инициализация VK аутентификации
+   */
+  async initializeVKAuth(): Promise<AuthResponse | null> {
+    try {
+      // Инициализируем VK API
+      await vkApiService.initialize();
+      
+      // Получаем информацию о пользователе VK
+      const userInfo = await vkApiService.getCurrentUser();
+      
+      // Получаем VK токен
+      const vkToken = vkApiService.getAccessToken();
+      if (!vkToken) {
+        throw new Error('VK token not available');
+      }
+
+      const loginData: LoginRequest = {
+        vk_user_id: userInfo.id,
+        vk_access_token: vkToken,
+        user_info: {
+          first_name: userInfo.first_name,
+          last_name: userInfo.last_name,
+          photo_200: userInfo.photo_200,
+          city: userInfo.city,
+        },
+      };
+
+      return await this.login(loginData);
+    } catch (error) {
+      console.error('VK authentication failed:', error);
+      return null;
+    }
   }
 
   // Установка токена доступа
@@ -101,7 +258,7 @@ class ApiService {
     const response = await this.api.get('/users/me');
     return response.data;
   }
-  
+
   async updateUserProfile(profileData: any): Promise<ApiResponse<any>> {
     const response = await this.api.put('/users/me', profileData);
     return response.data;

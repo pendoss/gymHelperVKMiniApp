@@ -40,7 +40,9 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const workoutId = params?.workoutId || '1';
-  const workout = store.workouts.find((w: any) => w.id === workoutId);
+  // Ищем тренировку сначала в пользовательских тренировках, затем в общих
+  const workout = store.getUserWorkouts().find((w: any) => w.id === workoutId) || 
+                  store.workouts.find((w: any) => w.id === workoutId);
 
   if (!workout) {
     return (
@@ -69,7 +71,13 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
   };
 
   const handleMarkCompleted = () => {
-    store.markWorkoutAsCompleted(workoutId);
+    // Проверяем, это пользовательская тренировка или общая
+    const isUserWorkout = store.getUserWorkouts().find((w: any) => w.id === workoutId);
+    if (isUserWorkout) {
+      store.updateUserWorkout(workoutId, { completed: true, completedAt: new Date() });
+    } else {
+      store.markWorkoutAsCompleted(workoutId);
+    }
   };
 
   const handleDelete = () => {
@@ -77,7 +85,13 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
   };
 
   const confirmDelete = () => {
-    store.deleteWorkout(workoutId);
+    // Проверяем, это пользовательская тренировка или общая
+    const isUserWorkout = store.getUserWorkouts().find((w: any) => w.id === workoutId);
+    if (isUserWorkout) {
+      store.deleteUserWorkout(workoutId);
+    } else {
+      store.deleteWorkout(workoutId);
+    }
     routeNavigator.back();
   };
 

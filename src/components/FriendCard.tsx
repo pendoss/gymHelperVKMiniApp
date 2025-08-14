@@ -7,9 +7,10 @@ import bridge from '@vkontakte/vk-bridge';
 interface FriendCardProps {
   friend: Friend;
   onInvite?: (friend: Friend) => void;
+  onFriendClick?: (friendId: number) => void;
 }
 
-export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite }) => {
+export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClick }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'in_gym': return '#4CAF50';
@@ -50,8 +51,16 @@ export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite }) => {
     onInvite?.(friend);
   };
 
+  const handleCardClick = () => {
+    onFriendClick?.(friend.id);
+  };
+
   return (
-    <Card mode="outline" style={{ marginBottom: 12 }}>
+    <Card 
+      mode="outline" 
+      style={{ marginBottom: 12, cursor: onFriendClick ? 'pointer' : 'default' }}
+      onClick={handleCardClick}
+    >
       <Div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ position: 'relative' }}>

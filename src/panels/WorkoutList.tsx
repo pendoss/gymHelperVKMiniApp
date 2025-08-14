@@ -25,7 +25,7 @@ export const WorkoutList: FC<WorkoutListProps> = observer(({ id }) => {
 
   const now = new Date();
 
-  const filteredWorkouts = store.workouts
+  const filteredWorkouts = store.getUserWorkouts()
     .filter(workout => {
       const matchesSearch = workout.title.toLowerCase().includes(searchValue.toLowerCase()) ||
                            workout.gym.toLowerCase().includes(searchValue.toLowerCase());

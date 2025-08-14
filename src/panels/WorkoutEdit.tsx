@@ -38,7 +38,9 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
     const routeNavigator = useRouteNavigator();
     const params = useParams<'workoutId'>();
     const workoutId = params?.workoutId;
-    const existingWorkout = workoutId ? store.workouts.find(w => w.id === workoutId) : null;
+    const existingWorkout = workoutId ? 
+        (store.getUserWorkouts().find(w => w.id === workoutId) || store.workouts.find(w => w.id === workoutId)) 
+        : null;
     const [title, setTitle] = useState(existingWorkout?.title || "");
     const [description, setDescription] = useState(existingWorkout?.description || "");
     const [date, setDate] = useState(existingWorkout ? new Date(existingWorkout.date) : new Date());
@@ -155,7 +157,13 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                 }))
             };
 
-            store.updateWorkout(existingWorkout.id, updatedWorkout);
+            // Проверяем, это пользовательская тренировка или общая
+            const isUserWorkout = store.getUserWorkouts().find(w => w.id === existingWorkout.id);
+            if (isUserWorkout) {
+                store.updateUserWorkout(existingWorkout.id, updatedWorkout);
+            } else {
+                store.updateWorkout(existingWorkout.id, updatedWorkout);
+            }
             routeNavigator.back();
         } catch (error) {
             console.error("Ошибка при сохранении тренировки:", error);

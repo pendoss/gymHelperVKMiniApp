@@ -13,7 +13,7 @@ export const AppConfig = () => {
   const vkBridgeAppearance = useAppearance() || undefined;
   const vkBridgeInsets = useInsets() || undefined;
   const adaptivity = transformVKBridgeAdaptivity(useAdaptivity());
-  
+
   let vk_platform = undefined;
   try {
     const searchParams = parseURLSearchParamsForGetLaunchParams(window.location.search);

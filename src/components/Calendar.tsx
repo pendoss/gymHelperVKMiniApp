@@ -39,14 +39,14 @@ export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
   };
 
   const hasWorkoutOnDate = (date: Date) => {
-    return store.workouts.some(workout => {
+    return store.getUserWorkouts().some(workout => {
       const workoutDate = new Date(workout.date);
       return workoutDate.toDateString() === date.toDateString();
     });
   };
 
   const getWorkoutsForDate = (date: Date) => {
-    return store.workouts.filter(workout => {
+    return store.getUserWorkouts().filter(workout => {
       const workoutDate = new Date(workout.date);
       return workoutDate.toDateString() === date.toDateString();
     });

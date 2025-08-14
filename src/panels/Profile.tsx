@@ -20,8 +20,10 @@ import {
 import { observer } from "mobx-react-lite";
 import { FriendCard } from "../components/FriendCard";
 import { Event } from "../components/Event";
+import { WorkoutInvitations } from "../components/WorkoutInvitations";
 import { useStore } from "../stores/StoreContext";
 import { UserInfo } from "@vkontakte/vk-bridge";
+import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
 
 export interface ProfileProps extends NavIdProps {
     fetchedUser?: UserInfo;
@@ -29,6 +31,7 @@ export interface ProfileProps extends NavIdProps {
 
 export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     const store = useStore();
+    const routeNavigator = useRouteNavigator();
     const [friendSearch, setFriendSearch] = useState("");
     const [friendFilter, setFriendFilter] = useState("all");
     const [isEditingGym, setIsEditingGym] = useState(false);
@@ -44,7 +47,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     const getPersonalizedGreeting = () => {
         const user = store.currentUser;
         if (!user) return "Добро пожаловать!";
-        
+        console.log(user.id);
         const timeOfDay = new Date().getHours();
         let greeting = "";
         
@@ -79,10 +82,12 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     };
 
     const getMostVisitedGym = () => {
-        const gymCounts = store.workouts.reduce((acc, workout) => {
-            acc[workout.gym] = (acc[workout.gym] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+        const gymCounts = store.workouts
+            .filter(workout => store.currentUser && Number(workout.createdBy) === Number(store.currentUser.id))
+            .reduce((acc, workout) => {
+                acc[workout.gym] = (acc[workout.gym] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
 
         const mostVisited = Object.entries(gymCounts).sort((a, b) => b[1] - a[1])[0];
         return mostVisited ? mostVisited[0] : "Не указан";
@@ -90,7 +95,11 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
 
     const getRecentWorkouts = () => {
         return store.workouts
-            .filter((workout) => new Date(workout.date) <= new Date())
+            .filter((workout) => {
+                return store.currentUser && 
+                       Number(workout.createdBy) === Number(store.currentUser.id) && 
+                       new Date(workout.date) <= new Date();
+            })
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5);
     };
@@ -178,6 +187,10 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                     </div>
                 </Div>
             </Group>
+
+            {/* Компонент приглашений на тренировки */}
+            <WorkoutInvitations />
+
             <Group header={<Header className="enhanced-header">Настройки профиля</Header>} className="enhanced-group">
                 <Div>
                     <Card mode="outline" className="enhanced-card">
@@ -260,7 +273,11 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                     ) : (
                         <div>
                             {filteredFriends.map((friend) => (
-                                <FriendCard key={friend.id} friend={friend} />
+                                <FriendCard 
+                                    key={friend.id} 
+                                    friend={friend} 
+                                    onFriendClick={(friendId) => routeNavigator.push(`/user-profile/${friendId}`)}
+                                />
                             ))}
                         </div>
                     )}

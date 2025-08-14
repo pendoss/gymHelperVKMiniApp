@@ -14,6 +14,7 @@ import {
   TabsItem,
   HorizontalScroll,
   Chip,
+  PanelHeader,
 } from '@vkontakte/vkui';
 import { 
   Icon28AddOutline, 
@@ -53,13 +54,9 @@ export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
 
   return (
     <Panel id={id}>
-      <div style={{ padding: '16px 16px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-          <Text weight="1" style={{ fontSize: 24 }}>
-            <span className="train-sync-gradient-text">Библиотека упражнений</span>
-          </Text>
-        </div>
-      </div>
+          <PanelHeader style={{ fontSize: 24 }}>
+              Библиотека упражнений
+          </PanelHeader>
       <Group>
         <Div>
           <Search

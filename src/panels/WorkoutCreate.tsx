@@ -19,7 +19,7 @@ import { FriendCard } from '../components/FriendCard';
 import { NavBar } from '../components/NavBar';
 import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
-import { Exercise, Friend, Workout, WorkoutExercise, WorkoutParticipant, Set } from '../types';
+import { Exercise, Friend, WorkoutExercise, WorkoutParticipant, Set } from '../types';
 import { observer } from 'mobx-react-lite';
 
 export interface WorkoutCreateProps extends NavIdProps {}
@@ -119,8 +119,7 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
         invitedAt: new Date(),
       }));
 
-      const workout: Workout = {
-        id: Date.now().toString(),
+      const workout = {
         title,
         description,
         date,
@@ -129,12 +128,12 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
         gym,
         exercises: workoutExercises,
         participants,
-        createdBy: 1, // Текущий пользователь
+        createdBy: store.currentUser?.id || 1,
         createdAt: new Date(),
         isTemplate: false,
       };
 
-      store.addWorkout(workout);
+      store.addUserWorkout(workout);
       await new Promise(resolve => setTimeout(resolve, 500));
       
       routeNavigator.replace('/workouts');

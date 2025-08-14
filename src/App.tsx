@@ -4,7 +4,7 @@ import { View, SplitLayout, SplitCol, ScreenSpinner } from '@vkontakte/vkui';
 import { useActiveVkuiLocation } from '@vkontakte/vk-mini-apps-router';
 import { observer } from 'mobx-react-lite';
 
-import { Home, Persik, ExerciseLibrary, ExerciseDetail, Profile, ExerciseEdit, WorkoutDetail, WorkoutEdit } from './panels';
+import { Home, Persik, ExerciseLibrary, ExerciseDetail, Profile, ExerciseEdit, WorkoutDetail, WorkoutEdit, UserProfile } from './panels';
 import { WorkoutCreate } from './panels/WorkoutCreate';
 import { WorkoutList } from './panels/WorkoutList';
 import { DEFAULT_VIEW_PANELS } from './routes';
@@ -86,6 +86,7 @@ const AppContent = observer(() => {
           <WorkoutDetail id="workout-detail" />
           <ExerciseEdit id="exercise-edit" />
           <Profile id="profile" fetchedUser={fetchedUser} />
+          <UserProfile id="user-profile" />
           <Persik id="persik" />
         </View>
         <NavBar/>

@@ -7,6 +7,8 @@ export { WorkoutDetail } from './WorkoutDetail';
 export { WorkoutCreate } from './WorkoutCreate';
 export { WorkoutEdit } from './WorkoutEdit';
 export { Profile } from './Profile';
+export { UserProfile } from './UserProfile';
+export { WorkoutList } from './WorkoutList';
 
 export type { HomeProps } from './Home';
 export type { ExerciseLibraryProps } from './ExerciseLibrary';
@@ -16,3 +18,5 @@ export type { WorkoutDetailProps } from './WorkoutDetail';
 export type { WorkoutCreateProps } from './WorkoutCreate';
 export type { WorkoutEditProps } from './WorkoutEdit';
 export type { ProfileProps } from './Profile';
+export type { UserProfileProps } from './UserProfile';
+export type { WorkoutListProps } from './WorkoutList';

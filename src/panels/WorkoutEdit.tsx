@@ -26,21 +26,20 @@ import { Icon24Dismiss } from "@vkontakte/icons";
 
 import { FriendCard } from "../components/FriendCard";
 import { ExerciseSelector } from "../components/ExerciseSelector";
-import { useStore } from "../stores/StoreContext";
-import { Friend } from "../types";
-import { Exercise, ExerciseSet, WorkoutExercise, Workout } from "../types/api";
+import { useRootStore } from "../store/RootStoreContext";
+import { Friend, Exercise, ExerciseSet, WorkoutExercise, Workout } from "../store/RootStore";
 
 export interface WorkoutEditProps {
     id: string;
 }
 
 export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditProps) => {
-    const store = useStore();
+    const store = useRootStore();
     const routeNavigator = useRouteNavigator();
     const params = useParams<'workoutId'>();
     const workoutId = params?.workoutId;
     const existingWorkout = workoutId ? 
-        store.getWorkoutById(+workoutId) as any : null;
+        store.getWorkout(+workoutId) as any : null;
     const [title, setTitle] = useState(existingWorkout?.title || "");
     const [description, setDescription] = useState(existingWorkout?.description || "");
     const [date, setDate] = useState(existingWorkout ? new Date(existingWorkout.date) : new Date());
@@ -71,12 +70,21 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
             
             const participantFriends = existingWorkout.participants.map((p: any) => ({
                 id: p.userId,
-                first_name: p.user.first_name,
-                last_name: p.user.last_name,
-                photo_200: p.user.photo_200,
+                vkId: p.userId,
+                firstName: p.user.first_name,
+                lastName: p.user.last_name,
+                photo: p.user.photo_200,
+                isActive: true,
+                level: 'beginner' as const,
+                firstLogin: false,
+                gym: '',
                 isOnline: false,
-                workoutsThisWeek: 0,
-                status: 'resting' as const
+                status: 'resting' as const,
+                lastWorkout: undefined,
+                nextWorkout: undefined,
+                workoutsThisWeek: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
             } as Friend));
             setSelectedParticipants(participantFriends);
         }
@@ -95,7 +103,7 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
 
     const filteredFriends = store.friends.filter(
         (friend: Friend) =>
-            `${friend.first_name} ${friend.last_name}`.toLowerCase().includes(friendSearch.toLowerCase()) &&
+            `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(friendSearch.toLowerCase()) &&
             !selectedParticipants.find((selected: Friend) => selected.id === friend.id)
     );
 
@@ -139,6 +147,20 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                 completed: false
             }));
 
+            const participants = selectedParticipants.map((friend: any) => ({
+                userId: friend.id,
+                user: {
+                    id: friend.id,
+                    first_name: friend.firstName,
+                    last_name: friend.lastName,
+                    photo_200: friend.photo || '',
+                    level: 'beginner' as const,
+                    firstLogin: false
+                },
+                status: 'pending' as const,
+                invitedAt: new Date()
+            }));
+
             const updatedWorkout: Workout = {
                 ...existingWorkout,
                 title,
@@ -147,24 +169,14 @@ export const WorkoutEdit: FC<WorkoutEditProps> = observer(({ id }: WorkoutEditPr
                 startTime: time,
                 location: gym,
                 exercises: workoutExercises,
-                participants: selectedParticipants.map((friend: any) => ({
-                    userId: friend.id,
-                    user: {
-                        id: friend.id,
-                        first_name: friend.first_name,
-                        last_name: friend.last_name,
-                        photo_200: friend.photo_200,
-                        level: 'beginner' as const,
-                        firstLogin: false
-                    },
-                    status: 'pending' as const,
-                    invitedAt: new Date()
-                }))
+                participants: participants
             };
 
-            const isUserWorkout = store.getUserWorkouts().find(w => String(w.id) === String(existingWorkout.id));
+            // Проверяем, это пользовательская тренировка или общая
+            const userWorkouts = await store.getUserWorkouts();
+            const isUserWorkout = userWorkouts.find((w: any) => String(w.id) === String(existingWorkout.id));
             if (isUserWorkout) {
-                store.updateUserWorkout(existingWorkout.id, updatedWorkout);
+                store.updateWorkout(existingWorkout.id, updatedWorkout);
             } else {
                 store.updateWorkout(existingWorkout.id, updatedWorkout);
             }

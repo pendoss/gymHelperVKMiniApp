@@ -8,7 +8,7 @@ import { Home, Persik, ExerciseLibrary, ExerciseDetail, Profile, ExerciseEdit, W
 import { WorkoutCreate } from './panels/WorkoutCreate';
 import { WorkoutList } from './panels/WorkoutList';
 import { DEFAULT_VIEW_PANELS } from './routes';
-import { StoreContext, appStore, useStore } from './stores/StoreContext';
+import { RootStoreProvider, useRootStore } from './store/RootStoreContext';
 import { NavBar } from './components/NavBar';
 import { OnBoardingModal } from './components/OnBoardingModal';
 
@@ -16,7 +16,7 @@ const AppContent = observer(() => {
   const { panel: activePanel = DEFAULT_VIEW_PANELS.HOME } = useActiveVkuiLocation();
   const [fetchedUser, setUser] = useState<UserInfo | undefined>();
   const [popout, setPopout] = useState<ReactNode | null>(<ScreenSpinner />);
-  const store = useStore();
+  const store = useRootStore();
 
   useEffect(() => {
     async function fetchData() {
@@ -39,7 +39,7 @@ const AppContent = observer(() => {
           },
           firstLogin: !localStorage.getItem('user_onboarded'), // проверяем был ли пользователь уже зарегистрирован
         };
-        store.auth.state.user = userData as any;
+        store.user = userData as any;
         
         setPopout(null);
       } catch (error) {
@@ -73,7 +73,7 @@ const AppContent = observer(() => {
           },
           firstLogin: !localStorage.getItem('user_onboarded'), // проверяем был ли пользователь уже зарегистрирован
         };
-        store.auth.state.user = fallbackUserData as any;
+        store.user = fallbackUserData as any;
         
         setPopout(null);
       }
@@ -99,9 +99,11 @@ const AppContent = observer(() => {
         </View>
         <NavBar/>
         <OnBoardingModal 
-          isOpen={store.showOnBoardingModal} 
+          isOpen={store.user? store.user.firstLogin: true} 
           onClose={() => {
-            store.setShowOnBoardingModal(false);
+            if (store.user) {
+                    store.user.firstLogin = false;
+                  }
             localStorage.setItem('user_onboarded', 'true'); // сохраняем что пользователь прошел онбординг
           }} 
         />
@@ -113,8 +115,8 @@ const AppContent = observer(() => {
 
 export const App = () => {
   return (
-    <StoreContext.Provider value={appStore}>
+    <RootStoreProvider>
       <AppContent />
-    </StoreContext.Provider>
+    </RootStoreProvider>
   );
 };

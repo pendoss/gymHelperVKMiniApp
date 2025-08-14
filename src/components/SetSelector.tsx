@@ -18,7 +18,7 @@ import {
   Icon28AddCircleOutline,
   Icon28DeleteOutline,
 } from '@vkontakte/icons';
-import { ExerciseSet } from '../types/api';
+import { ExerciseSet } from '../store/RootStore';
 
 interface SetSelectorProps extends NavIdProps {
   exerciseName: string;

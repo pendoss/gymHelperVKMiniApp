@@ -26,20 +26,20 @@ import {
 } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
 import { useRouteNavigator, useParams } from '@vkontakte/vk-mini-apps-router';
-import { useStore } from '../stores/StoreContext';
 import { NavBar } from '../components/NavBar';
+import { useRootStore } from '../store/RootStoreContext';
 
 export interface WorkoutDetailProps extends NavIdProps {}
 
 export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
   const routeNavigator = useRouteNavigator();
   const params = useParams<'workoutId'>();
-  const store = useStore();
+  const store = useRootStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const workoutId = params?.workoutId || '1';
   // Ищем тренировку используя метод store с корректным сравнением типов
-  const workout = store.getWorkoutById(Number(workoutId));
+  const workout = store.workouts.find(w => w.id === Number(workoutId));
 
   if (!workout) {
     return (
@@ -57,10 +57,10 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const workoutDetails = {
     ...workout,
-    status: (workout as any).completed ? 'completed' : (new Date((workout as any).date) < new Date() ? 'overdue' : 'planned'),
-    totalSets: (workout as any).exercises.reduce((total: number, exercise: any) => total + exercise.sets.length, 0),
-    totalExercises: (workout as any).exercises.length,
-    muscleGroups: [...new Set((workout as any).exercises.flatMap((ex: any) => ex.exercise.muscleGroup || []))],
+    status: workout.status === 'completed' ? 'completed' : (new Date(workout.date) < new Date() ? 'overdue' : 'planned'),
+    totalSets: workout.exercises.reduce((total: number, exercise: any) => total + exercise.sets.length, 0),
+    totalExercises: workout.exercises.length,
+    muscleGroups: [...new Set(workout.exercises.flatMap((ex: any) => ex.exercise.muscleGroup || []))],
   };
 
   const handleEdit = () => {
@@ -69,11 +69,11 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const handleMarkCompleted = () => {
     // Проверяем, это пользовательская тренировка или общая
-    const isUserWorkout = store.getUserWorkouts().find((w: any) => String(w.id) === String(workoutId));
+    const isUserWorkout = store.workouts.find((w: any) => String(w.id) === String(workoutId) && w.createdBy === store.user?.id?.toString());
     if (isUserWorkout) {
-      store.updateUserWorkout(Number(workoutId), { completed: true, completedAt: new Date() });
+      store.updateWorkout(Number(workoutId), { status: 'completed', completedAt: new Date().toISOString() });
     } else {
-      store.markWorkoutAsCompleted(Number(workoutId));
+      store.updateWorkout(Number(workoutId), { status: 'completed', completedAt: new Date().toISOString() });
     }
   };
 
@@ -191,9 +191,9 @@ export const WorkoutDetail: FC<WorkoutDetailProps> = observer(({ id }) => {
 
   const confirmDelete = () => {
     // Проверяем, это пользовательская тренировка или общая
-    const isUserWorkout = store.getUserWorkouts().find((w: any) => String(w.id) === String(workoutId));
+    const isUserWorkout = store.workouts.find((w: any) => String(w.id) === String(workoutId) && w.createdBy === store.user?.id?.toString());
     if (isUserWorkout) {
-      store.deleteUserWorkout(Number(workoutId));
+      store.deleteWorkout(Number(workoutId));
     } else {
       store.deleteWorkout(Number(workoutId));
     }

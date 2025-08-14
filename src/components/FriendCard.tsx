@@ -1,8 +1,9 @@
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { Card, Text, Div, Button, Avatar, Chip } from '@vkontakte/vkui';
 import { Icon28MessageOutline, Icon28AddOutline } from '@vkontakte/icons';
-import { Friend } from '../types/index';
 import bridge from '@vkontakte/vk-bridge';
+import { Friend } from '../store/RootStore';
+import { useRootStore } from '../store/RootStoreContext';
 
 interface FriendCardProps {
   friend: Friend;
@@ -11,11 +12,31 @@ interface FriendCardProps {
 }
 
 export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClick }) => {
+  const store = useRootStore();
+  const [workoutData, setWorkoutData] = useState<{
+    lastWorkout?: Date;
+    nextWorkout?: Date;
+    workoutsThisWeek: any[];
+  }>({
+    workoutsThisWeek: []
+  });
+
+  useEffect(() => {
+    const loadWorkoutData = async () => {
+      try {
+        const data = await store.getFriendWorkoutData(friend.vkId);
+        setWorkoutData(data);
+      } catch (error) {
+        console.error('Error loading workout data for friend:', error);
+      }
+    };
+
+    loadWorkoutData();
+  }, [friend.vkId, store]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'in_gym': return '#4CAF50';
-      case 'looking_for_partner': return '#2196F3';
-      case 'finished_workout': return '#FF9800';
+      case 'training': return '#4CAF50';
       case 'resting': return '#9E9E9E';
       default: return '#9E9E9E';
     }
@@ -23,9 +44,7 @@ export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClic
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'in_gym': return 'В зале';
-      case 'looking_for_partner': return 'Ищет партнера';
-      case 'finished_workout': return 'Закончил тренировку';
+      case 'training': return 'Тренируется';
       case 'resting': return 'Отдыхает';
       default: return 'Неизвестно';
     }
@@ -64,7 +83,7 @@ export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClic
       <Div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ position: 'relative' }}>
-            <Avatar size={48} src={friend.photo_200} />
+            <Avatar size={48} src={friend.photo} />
             {friend.isOnline && (
               <div
                 style={{
@@ -83,7 +102,7 @@ export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClic
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <Text weight="2" style={{ marginBottom: 4 }}>
-              {friend.first_name} {friend.last_name}
+              {friend.firstName} {friend.lastName}
             </Text>
             
             {friend.gym && (
@@ -103,13 +122,13 @@ export const FriendCard: FC<FriendCardProps> = ({ friend, onInvite, onFriendClic
                 <p style={{ color: 'white' }}>{getStatusText(friend.status)}</p>
               </Chip>
               <Text style={{ fontSize: 12, opacity: 0.7 }}>
-                {friend.workoutsThisWeek} тренировок на неделе
+                {workoutData.workoutsThisWeek.length} тренировок на неделе
               </Text>
             </div>
 
             <div style={{ fontSize: 12, opacity: 0.7 }}>
-              <div>Последняя: {formatDate(friend.lastWorkout)}</div>
-              <div>Предстоящая: {formatDate(friend.nextWorkout)}</div>
+              <div>Последняя: {formatDate(workoutData.lastWorkout)}</div>
+              <div>Предстоящая: {formatDate(workoutData.nextWorkout)}</div>
             </div>
           </div>
         </div>

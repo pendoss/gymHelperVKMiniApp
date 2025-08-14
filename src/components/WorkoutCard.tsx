@@ -6,10 +6,10 @@ import {
   Icon28InfoOutline,
   Icon28UsersOutline,
 } from '@vkontakte/icons';
-import { Workout, WorkoutExercise, ExerciseSet } from '../types/api';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { observer } from 'mobx-react-lite';
 import { InviteFriendsModal } from './InviteFriendsModal';
+import { ExerciseSet, Workout, WorkoutExercise } from '../store/RootStore';
 
 interface WorkoutCardProps {
   workout: Workout;
@@ -171,7 +171,7 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {workout.participants.map((participant) => (
                     <div
-                      key={participant.userId}
+                      key={participant.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -181,10 +181,10 @@ export const WorkoutCard: FC<WorkoutCardProps> = observer(({ workout, expandable
                         gap: 12,
                       }}
                     >
-                      <Avatar size={36} src={participant.user.photo_200} />
+                      <Avatar size={36} src={participant.photo} />
                       <div style={{ flex: 1 }}>
                         <Text weight="2" style={{ fontSize: 16, marginBottom: 2 }}>
-                          {participant.user.first_name} {participant.user.last_name}
+                          {participant.firstName} {participant.lastName}
                         </Text>
                         <Text style={{ fontSize: 14, opacity: 0.7 }}>
                           Статус: {participant.status}

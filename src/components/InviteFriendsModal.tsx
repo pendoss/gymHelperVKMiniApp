@@ -15,7 +15,7 @@ import {
     Spacing,
 } from "@vkontakte/vkui";
 import { observer } from "mobx-react-lite";
-import { useStore } from "../stores/StoreContext";
+import { useRootStore } from "../store/RootStoreContext";
 import { Icon28UsersOutline } from "@vkontakte/icons";
 
 export interface InviteFriendsModalProps {
@@ -29,7 +29,7 @@ export const InviteFriendsModal: FC<InviteFriendsModalProps> = observer(({
     isVisible, 
     onClose 
 }) => {
-    const store = useStore();
+    const store = useRootStore();
     const [searchValue, setSearchValue] = useState("");
     const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
 
@@ -45,10 +45,10 @@ export const InviteFriendsModal: FC<InviteFriendsModalProps> = observer(({
         );
     };
 
-    const handleSendInvitations = () => {
-        selectedFriends.forEach(friendId => {
-            store.sendWorkoutInvitation(friendId, workoutId);
-        });
+    const handleSendInvitations = async () => {
+        for (const friendId of selectedFriends) {
+            await store.createInvitation(workoutId, [friendId.toString()]);
+        }
         
         setSelectedFriends([]);
         setSearchValue("");

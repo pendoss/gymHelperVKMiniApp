@@ -10,7 +10,7 @@ import {
   Spacing,
 } from '@vkontakte/vkui';
 import { Icon28FavoriteOutline, Icon28CancelOutline } from '@vkontakte/icons';
-import { useStore } from '../stores/StoreContext';
+import { useRootStore } from '../store/RootStoreContext';
 import { observer } from 'mobx-react-lite';
 
 interface OnBoardingModalProps {
@@ -19,24 +19,19 @@ interface OnBoardingModalProps {
 }
 
 export const OnBoardingModal: FC<OnBoardingModalProps> = observer(({ isOpen, onClose }) => {
-  const store = useStore();
+  const store = useRootStore();
   const [gymName, setGymName] = useState('');
 
   const handleSaveGym = () => {
-    if (gymName.trim()) {
-      store.setMainGym(gymName.trim());
-    }
-    if (store.currentUser) {
-      store.updateCurrentUser({ firstLogin: false });
+    if (gymName.trim() && store.user) {
+      // Save gym to user profile - will need API endpoint for this
+      // store.user.gym = gymName.trim();
     }
     localStorage.setItem('user_onboarded', 'true');
     onClose();
   };
 
   const handleSkip = () => {
-    if (store.currentUser) {
-      store.updateCurrentUser({ firstLogin: false });
-    }
     localStorage.setItem('user_onboarded', 'true');
     onClose();
   };

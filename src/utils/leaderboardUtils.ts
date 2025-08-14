@@ -1,6 +1,3 @@
-/**
- * Утилиты для работы с лидербордом и статистикой пользователей
- */
 
 export interface UserStats {
   id: string | number;
@@ -121,7 +118,12 @@ export const getUserStats = (store: any): UserStats[] => {
   const userStats = new Map();
   
   // Собираем статистику из пользовательских тренировок
-  store.getUserWorkouts().forEach((workout: any) => {
+  // Используем синхронный массив workouts вместо асинхронного getUserWorkouts()
+  const userWorkouts = store.workouts.filter((workout: any) => 
+    store.user && workout.createdBy === store.user.vkId.toString()
+  );
+  
+  userWorkouts.forEach((workout: any) => {
     const createdBy = workout.createdBy;
     if (!userStats.has(createdBy)) {
       userStats.set(createdBy, {

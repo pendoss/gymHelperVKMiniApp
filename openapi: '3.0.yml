@@ -1,0 +1,682 @@
+openapi: '3.0.3'
+info:
+  title: GymHelper VK Mini App API
+  description: API для мини-приложения GymHelper в VKontakte. Приложение для управления тренировками, упражнениями и социальными функциями.
+  version: '2.0.0'
+  contact:
+    name: GymHelper Support
+    email: support@gymhelper.app
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.gymhelper.local/v1
+    description: Production server
+  - url: https://api-dev.gymhelper.local/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - VKAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/vk:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate with VK
+      description: Аутентификация пользователя через VK access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vk_access_token
+                - vk_user_id
+                - api_version
+              properties:
+                vk_access_token:
+                  type: string
+                  description: VK access token
+                  example: "vk1.a.abc123def456"
+                vk_user_id:
+                  type: integer
+                  description: VK user ID
+                  example: 12345678
+                api_version:
+                  type: string
+                  description: VK API version
+                  example: "5.199"
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "rt_abc123def456"
+                  expiresIn: 3600
+                  expiresAt: "2025-08-14T15:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Обновление access token используя refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  example: "rt_abc123def456"
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Получение профиля текущего пользователя
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                success: true
+                data:
+                  id: 1
+                  vkId: 12345678
+                  firstName: "Иван"
+                  lastName: "Иванов"
+                  photo: "https://sun9-74.userapi.com/photo.jpg"
+                  city: "Москва"
+                  isActive: true
+                  level: "intermediate"
+                  firstLogin: false
+                  createdAt: "2025-01-15T10:00:00Z"
+                  updatedAt: "2025-08-14T12:00:00Z"
+
+  /auth/profile:
+    patch:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Обновление профиля пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: "Александр"
+                lastName:
+                  type: string
+                  example: "Петров"
+                level:
+                  type: string
+                  enum: [beginner, intermediate, advanced, expert, amateur]
+                  example: "advanced"
+            example:
+              firstName: "Александр"
+              level: "advanced"
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Выход пользователя (инвалидация токенов)
+      responses:
+        '200':
+          description: Успешный выход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/verify-vk:
+    post:
+      tags:
+        - Authentication
+      summary: Verify VK token
+      description: Проверка валидности VK токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vk_access_token
+              properties:
+                vk_access_token:
+                  type: string
+                  example: "vk1.a.abc123def456"
+      responses:
+        '200':
+          description: Токен валиден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VKUserResponse'
+
+  /auth/devices:
+    post:
+      tags:
+        - Authentication
+      summary: Register device for push notifications
+      description: Регистрация устройства для push уведомлений
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - device_token
+                - platform
+              properties:
+                device_token:
+                  type: string
+                  example: "device_token_123"
+                platform:
+                  type: string
+                  enum: [ios, android, web]
+                  example: "web"
+      responses:
+        '200':
+          description: Устройство зарегистрировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/devices/{deviceToken}:
+    delete:
+      tags:
+        - Authentication
+      summary: Unregister device
+      description: Отмена регистрации устройства для push уведомлений
+      parameters:
+        - name: deviceToken
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "device_token_123"
+      responses:
+        '200':
+          description: Устройство удалено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # Exercises endpoints
+  /exercises:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercises list
+      description: Получение списка упражнений с фильтрацией и пагинацией
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+          example: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+          example: "жим"
+          description: Поиск по названию упражнения
+        - name: muscleGroup
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["chest", "shoulders"]
+          description: Фильтр по группам мышц
+        - name: equipment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["barbell", "dumbbell"]
+          description: Фильтр по оборудованию
+        - name: createdBy
+          in: query
+          schema:
+            type: integer
+          example: 123
+          description: Фильтр по создателю упражнения
+      responses:
+        '200':
+          description: Список упражнений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExercisesListResponse'
+              example:
+                success: true
+                data:
+                  items:
+                    - id: "1"
+                      name: "Жим штанги лежа"
+                      description: "Базовое упражнение для развития грудных мышц"
+                      muscleGroup: ["chest", "shoulders", "triceps"]
+                      equipment: ["barbell", "bench"]
+                      difficulty: "intermediate"
+                      instructions: ["Лягте на скамью", "Возьмите штангу", "Опустите на грудь", "Выжмите вверх"]
+                      imageUrl: "https://example.com/bench-press.jpg"
+                      createdBy: 1
+                      isPublic: true
+                      createdAt: "2025-01-01T00:00:00Z"
+                      updatedAt: "2025-01-01T00:00:00Z"
+                  pagination:
+                    page: 1
+                    limit: 20
+                    total: 150
+                    totalPages: 8
+                    hasNext: true
+                    hasPrev: false
+
+    post:
+      tags:
+        - Exercises
+      summary: Create exercise
+      description: Создание нового упражнения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExerciseRequest'
+            example:
+              name: "Приседания со штангой"
+              description: "Базовое упражнение для ног"
+              muscleGroup: ["quads", "glutes", "hamstrings"]
+              equipment: ["barbell"]
+              difficulty: "intermediate"
+              instructions: ["Положите штангу на плечи", "Присядьте до параллели", "Встаньте"]
+              isPublic: true
+      responses:
+        '201':
+          description: Упражнение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /exercises/{id}:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercise by ID
+      description: Получение упражнения по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Информация об упражнении
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Exercises
+      summary: Update exercise
+      description: Обновление упражнения
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExerciseRequest'
+      responses:
+        '200':
+          description: Упражнение обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
+
+    delete:
+      tags:
+        - Exercises
+      summary: Delete exercise
+      description: Удаление упражнения
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Упражнение удалено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /exercises/{id}/media:
+    post:
+      tags:
+        - Exercises
+      summary: Upload exercise media
+      description: Загрузка изображения или видео для упражнения
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - type
+              properties:
+                file:
+                  type: string
+                  format: binary
+                type:
+                  type: string
+                  enum: [image, video]
+                  example: "image"
+      responses:
+        '200':
+          description: Медиа загружено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                        example: "https://cdn.gymhelper.app/exercises/1/image.jpg"
+
+  /exercises/{id}/media/{type}:
+    delete:
+      tags:
+        - Exercises
+      summary: Delete exercise media
+      description: Удаление медиа упражнения
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [image, video]
+          example: "image"
+      responses:
+        '200':
+          description: Медиа удалено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /exercises/search:
+    get:
+      tags:
+        - Exercises
+      summary: Search exercises
+      description: Поиск упражнений по тексту
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "жим"
+        - name: muscleGroup
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["chest"]
+        - name: equipment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["barbell"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+
+  /exercises/muscle-group/{muscleGroup}:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercises by muscle group
+      description: Получение упражнений по группе мышц
+      parameters:
+        - name: muscleGroup
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "chest"
+      responses:
+        '200':
+          description: Упражнения для группы мышц
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+
+  /exercises/popular:
+    get:
+      tags:
+        - Exercises
+      summary: Get popular exercises
+      description: Получение популярных упражнений
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Популярные упражнения
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+
+  /exercises/favorites:
+    get:
+      tags:
+        - Exercises
+      summary: Get favorite exercises
+      description: Получение избранных упражнений пользователя
+      responses:
+        '200':
+          description: Избранные упражнения
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Exercise'
+
+  /exercises/{id}/favorite:
+    post:
+      tags:
+        - Exercises
+      summary: Add to favorites
+      description: Добавление упражнения в избранное
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Добавлено в избранное
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+    delete:
+      tags:
+        - Exercises
+      summary: Remove from favorites
+      description: Удаление упражнения из избранного
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Удалено из избранного
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'

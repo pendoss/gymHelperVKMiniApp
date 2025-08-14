@@ -1,9 +1,9 @@
 import { FC } from 'react';
 import { Cell, Avatar, Text } from '@vkontakte/vkui';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { getUserPosition, getPositionColor } from '../utils/leaderboardUtils';
+import { useRootStore } from '../store/RootStoreContext';
 
 interface UserLeaderboardPositionProps {
   userId?: string | number;
@@ -16,10 +16,10 @@ export const UserLeaderboardPosition: FC<UserLeaderboardPositionProps> = observe
   isCurrentUser = false,
   clickable = true 
 }) => {
-  const store = useStore();
+  const store = useRootStore();
   const routeNavigator = useRouteNavigator();
   
-  const targetUserId = userId || store.currentUser?.id;
+  const targetUserId = userId || store.user?.id;
   if (!targetUserId) return null;
   
   const userPosition = getUserPosition(store, targetUserId);
@@ -51,7 +51,7 @@ export const UserLeaderboardPosition: FC<UserLeaderboardPositionProps> = observe
             </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Avatar 
-                src={(store.currentUser as any)?.photo_200 || (store.currentUser as any)?.photo} 
+                src={(store.user as any)?.photo_200 || (store.user as any)?.photo} 
                 size={40}
                 style={{
                   border: isCurrentUser ? '2px solid #4CAF50' : 'none'
@@ -75,7 +75,7 @@ export const UserLeaderboardPosition: FC<UserLeaderboardPositionProps> = observe
           fontWeight: isCurrentUser ? 600 : 400,
           color: isCurrentUser ? '#4CAF50' : 'inherit'
         }}>
-          {store.currentUser?.firstName || 'Пользователь'} {store.currentUser?.lastName || ''}
+          {store.user?.firstName || 'Пользователь'} {store.user?.lastName || ''}
           {isCurrentUser && ' (Вы)'}
         </div>
       </Cell>

@@ -1,8 +1,8 @@
 import { FC } from 'react';
 import { Card, Text, Div, Button, Avatar } from '@vkontakte/vkui';
 import { Icon28EditOutline } from '@vkontakte/icons';
-import { Exercise } from '../types/api';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
+import { Exercise } from '../store/RootStore';
 
 interface ExerciseCardProps {
   exercise: Exercise;

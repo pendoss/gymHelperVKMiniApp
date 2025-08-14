@@ -21,26 +21,26 @@ import {
   Icon28HashtagOutline,
 } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../stores/StoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
-import { Exercise } from '../types/api';
+import { useRootStore } from '../store/RootStoreContext';
+import { Exercise } from '../store/RootStore';
 
 export interface ExerciseLibraryProps extends NavIdProps {}
 
 export const ExerciseLibrary: FC<ExerciseLibraryProps> = observer(({ id }) => {
-  const appStore = useStore();
+  const appStore = useRootStore();
   const [searchValue, setSearchValue] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const routeNavigator = useRouteNavigator();
 
   // Получаем уникальные категории из существующих упражнений
-  const dynamicCategories = [...new Set(appStore.exercises.exercises
+  const dynamicCategories = [...new Set(appStore.exercises
     .flatMap((ex: Exercise) => ex.muscleGroup || [])
     .filter((muscleGroup: string) => muscleGroup !== undefined && muscleGroup !== null)
   )] as string[];
   const categories = dynamicCategories.length > 0 ? ['Все', ...dynamicCategories] : ['Все'];
 
-  const filteredExercises = appStore.exercises.exercises
+  const filteredExercises = appStore.exercises
     .filter((exercise: Exercise) => exercise && exercise.id) // Исключаем пустые или некорректные упражнения
     .filter((exercise: Exercise) => {
       const exerciseName = exercise?.name || '';

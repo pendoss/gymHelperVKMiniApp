@@ -16,13 +16,11 @@ import {
   Avatar,
   Chip,
   Badge,
-  Spinner,
   Placeholder,
   IconButton,
   Alert,
   Snackbar,
   Progress,
-  Spacing,
   Title,
   Footnote
 } from '@vkontakte/vkui';
@@ -33,12 +31,14 @@ import {
   Icon24Users,
   Icon24CalendarOutline,
   Icon24RefreshOutline,
-  Icon24NotificationOutline,
   Icon24ErrorCircleOutline
 } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../../stores/StoreContext';
-import { WorkoutInvitation, InvitationStatus } from '../../types/index';
+import { useRootStore } from '../../store/RootStoreContext';
+import { WorkoutInvitation } from '../../store/RootStore';
+
+// Define invitation status type
+type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'auto_declined' | 'expired' | 'cancelled';
 
 // Simple error handler
 const handleError = (error: any, context?: { action?: string }) => {
@@ -86,35 +86,45 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
   showReceived = true,
   maxItems = 10
 }) => {
-  const appStore = useStore();
-  const invitationStore = appStore.invitations;
+  const appStore = useRootStore();
+  const invitations = appStore.invitations; // Это массив WorkoutInvitation[]
   const [selectedTab, setSelectedTab] = useState<'received' | 'sent'>('received');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<React.ReactNode | null>(null);
   const [popout, setPopout] = useState<React.ReactNode | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<Record<string, number>>({});
+  const [timeRemaining, setTimeRemaining] = useState<Record<number, number>>({});
 
   // Обновление оставшегося времени каждую секунду
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeRemaining(invitationStore.timeUntilAutoDecline);
+      const timeMap: Record<number, number> = {};
+      
+      invitations.forEach(invitation => {
+        if (invitation.status === 'pending' && invitation.autoDeclineAt) {
+          const now = new Date().getTime();
+          const autoDeclineTime = new Date(invitation.autoDeclineAt).getTime();
+          timeMap[invitation.id] = Math.max(0, Math.floor((autoDeclineTime - now) / 1000));
+        }
+      });
+      
+      setTimeRemaining(timeMap);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [invitationStore]);
+  }, [invitations]);
 
   // Загрузка приглашений при монтировании
   useEffect(() => {
-    invitationStore.loadInvitations();
-  }, [invitationStore]);
+    appStore.loadInvitations();
+  }, []);
 
   /**
    * Обработка принятия приглашения
    */
-  const handleAcceptInvitation = async (invitationId: string) => {
+  const handleAcceptInvitation = async (invitationId: number) => {
     try {
       setActionLoading(invitationId);
-      await invitationStore.acceptInvitation(invitationId);
+      await appStore.acceptInvitation(invitationId);
       
       setSnackbar(
         <Snackbar
@@ -136,10 +146,10 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
   /**
    * Обработка отклонения приглашения
    */
-  const handleDeclineInvitation = async (invitationId: string, reason?: string) => {
+  const handleDeclineInvitation = async (invitationId: number) => {
     try {
       setActionLoading(invitationId);
-      await invitationStore.declineInvitation(invitationId, reason);
+      await appStore.declineInvitation(invitationId);
       
       setSnackbar(
         <Snackbar
@@ -161,10 +171,10 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
   /**
    * Обработка отмены приглашения
    */
-  const handleCancelInvitation = async (invitationId: string) => {
+  const handleCancelInvitation = async (invitationId: number) => {
     try {
       setActionLoading(invitationId);
-      await invitationStore.cancelInvitation(invitationId);
+      await appStore.cancelInvitation(invitationId);
       
       setSnackbar(
         <Snackbar
@@ -205,7 +215,7 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
       >
         <div>
           <Text weight="2" style={{ marginBottom: 8 }}>Отклонить приглашение?</Text>
-          <Text>{`Вы действительно хотите отклонить приглашение на тренировку "${invitation.workout?.name || invitation.workout?.title}"?`}</Text>
+          <Text>Вы действительно хотите отклонить приглашение на тренировку?</Text>
         </div>
       </Alert>
     );
@@ -233,7 +243,7 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
       >
         <div>
           <Text weight="2" style={{ marginBottom: 8 }}>Отменить приглашение?</Text>
-          <Text>{`Вы действительно хотите отменить приглашение для ${invitation.invitee?.first_name} ${invitation.invitee?.last_name}?`}</Text>
+          <Text>Вы действительно хотите отменить приглашение?</Text>
         </div>
       </Alert>
     );
@@ -286,11 +296,10 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
     const progress = getAutoDeclineProgress(invitation);
     const isExpiringSoon = remaining > 0 && remaining <= 300; // 5 минут
     
-    const user = type === 'received' ? invitation.inviter : invitation.invitee;
-    const workout = invitation.workout;
+    // Поскольку в WorkoutInvitation нет вложенных объектов user/workout, используем заглушки
+    const userName = type === 'received' ? 'Пользователь' : 'Приглашенный';
+    const workoutName = 'Тренировка';
     
-    if (!user || !workout) return null;
-
     return (
       <Card key={invitation.id} mode="shadow" style={{ marginBottom: 12 }}>
         <Div>
@@ -298,14 +307,13 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
             <Avatar
               size={40}
-              src={user.photo_200 || user.photo}
               fallbackIcon={<Icon24Users />}
             />
             <div style={{ marginLeft: 12, flex: 1 }}>
               <Title level="3" weight="2">
                 {type === 'received' 
-                  ? `${user.first_name} ${user.last_name}`
-                  : `Для ${user.first_name} ${user.last_name}`
+                  ? userName
+                  : `Для ${userName}`
                 }
               </Title>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -315,31 +323,19 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
                 >
                   {statusLabels[invitation.status]}
                 </Chip>
-                {invitation.status === 'pending' && invitation.metadata?.sentViaVK && (
-                  <Badge mode="new">
-                    <Icon24NotificationOutline width={12} height={12} />
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
 
           {/* Информация о тренировке */}
           <div style={{ marginBottom: 12 }}>
-            <Text weight="2" style={{ marginBottom: 4 }}>{workout.name || workout.title}</Text>
-            {workout.description && (
-              <Footnote style={{ marginBottom: 4 }}>{workout.description}</Footnote>
-            )}
+            <Text weight="2" style={{ marginBottom: 4 }}>{workoutName}</Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Icon24CalendarOutline width={16} height={16} />
                 <Footnote>
-                  {new Date(workout.date).toLocaleDateString('ru-RU')} в {workout.startTime}
+                  {new Date(invitation.createdAt).toLocaleDateString('ru-RU')}
                 </Footnote>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Icon24ClockOutline width={16} height={16} />
-                <Footnote>{workout.duration || workout.estimatedDuration} мин</Footnote>
               </div>
             </div>
           </div>
@@ -443,17 +439,17 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
    * Получение списка приглашений для отображения
    */
   const getInvitationsToShow = () => {
-    const invitations = selectedTab === 'received' 
-      ? invitationStore.receivedInvitations 
-      : invitationStore.sentInvitations;
+    const invitationsToShow = selectedTab === 'received' 
+      ? appStore.receivedInvitations 
+      : appStore.sentInvitations;
     
-    return invitations.slice(0, maxItems);
+    return invitationsToShow.slice(0, maxItems);
   };
 
-  const invitations = getInvitationsToShow();
+  const invitationsToShow = getInvitationsToShow();
   const pendingCount = selectedTab === 'received' 
-    ? invitationStore.pendingReceivedInvitations.length
-    : invitationStore.pendingSentInvitations.length;
+    ? appStore.pendingReceivedInvitations.length
+    : appStore.pendingSentInvitations.length;
 
   return (
     <>
@@ -469,7 +465,7 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
                   </Badge>
                 )}
               </span>
-              <IconButton onClick={() => invitationStore.loadInvitations()}>
+              <IconButton onClick={() => appStore.loadInvitations()}>
                 <Icon24RefreshOutline />
               </IconButton>
             </div>
@@ -487,9 +483,9 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
                 style={{ flex: 1 }}
               >
                 Полученные
-                {invitationStore.pendingReceivedInvitations.length > 0 && (
+                {appStore.pendingReceivedInvitations.length > 0 && (
                   <Badge mode="new" style={{ marginLeft: 8 }}>
-                    {invitationStore.pendingReceivedInvitations.length}
+                    {appStore.pendingReceivedInvitations.length}
                   </Badge>
                 )}
               </Button>
@@ -500,9 +496,9 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
                 style={{ flex: 1 }}
               >
                 Отправленные
-                {invitationStore.pendingSentInvitations.length > 0 && (
+                {appStore.pendingSentInvitations.length > 0 && (
                   <Badge mode="new" style={{ marginLeft: 8 }}>
-                    {invitationStore.pendingSentInvitations.length}
+                    {appStore.pendingSentInvitations.length}
                   </Badge>
                 )}
               </Button>
@@ -510,49 +506,29 @@ export const WorkoutInvitations: FC<WorkoutInvitationsProps> = observer(({
           </Div>
         )}
 
-        {/* Индикатор загрузки */}
-        {invitationStore.isLoading && (
-          <Div style={{ textAlign: 'center', padding: 20 }}>
-            <Spinner size="l" />
-            <Spacing size={16} />
-            <Text>Загрузка приглашений...</Text>
-          </Div>
-        )}
-
-        {/* Ошибка */}
-        {invitationStore.error && (
-          <Div>
-            <Placeholder icon={<Icon24ErrorCircleOutline />}>
-              <Text>{invitationStore.error}</Text>
-            </Placeholder>
-          </Div>
-        )}
-
         {/* Список приглашений */}
-        {!invitationStore.isLoading && !invitationStore.error && (
-          <Div>
-            {invitations.length === 0 ? (
-              <Placeholder icon={<Icon24Users />}>
-                <Text>
-                  {selectedTab === 'received' 
-                    ? 'Нет полученных приглашений'
-                    : 'Нет отправленных приглашений'
-                  }
-                </Text>
-                <Footnote style={{ marginTop: 8 }}>
-                  {selectedTab === 'received' 
-                    ? 'Когда друзья пригласят вас на тренировку, приглашения появятся здесь'
-                    : 'Пригласите друзей на тренировку, чтобы увидеть отправленные приглашения'
-                  }
-                </Footnote>
-              </Placeholder>
-            ) : (
-              invitations.map((invitation: any) =>
-                renderInvitationCard(invitation, selectedTab)
-              )
-            )}
-          </Div>
-        )}
+        <Div>
+          {invitationsToShow.length === 0 ? (
+            <Placeholder icon={<Icon24Users />}>
+              <Text>
+                {selectedTab === 'received' 
+                  ? 'Нет полученных приглашений'
+                  : 'Нет отправленных приглашений'
+                }
+              </Text>
+              <Footnote style={{ marginTop: 8 }}>
+                {selectedTab === 'received' 
+                  ? 'Когда друзья пригласят вас на тренировку, приглашения появятся здесь'
+                  : 'Пригласите друзей на тренировку, чтобы увидеть отправленные приглашения'
+                }
+              </Footnote>
+            </Placeholder>
+          ) : (
+            invitationsToShow.map((invitation: any) =>
+              renderInvitationCard(invitation, selectedTab)
+            )
+          )}
+        </Div>
       </Group>
 
       {snackbar}

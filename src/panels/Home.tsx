@@ -1,8 +1,7 @@
-import { FC, useEffect } from "react";
+import { FC, useEffect, useState } from "react";
 import {
     Panel,
     PanelHeader,
-    PanelHeaderButton,
     Header,
     Group,
     Cell,
@@ -14,37 +13,41 @@ import {
     Button,
     Chip,
 } from "@vkontakte/vkui";
-import { Icon28AddOutline, Icon28MoonOutline, Icon28SunOutline } from "@vkontakte/icons";
+import { Icon28AddOutline } from "@vkontakte/icons";
 import { UserInfo } from "@vkontakte/vk-bridge";
 import { observer } from "mobx-react-lite";
 import { Calendar } from "../components/Calendar";
 import { Leaderboard } from "../components/Leaderboard";
-import { useStore } from "../stores/StoreContext";
 import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
+import { useRootStore } from "../store/RootStoreContext";
+import { Workout } from "../store/RootStore";
 
 export interface HomeProps extends NavIdProps {
     fetchedUser?: UserInfo;
 }
 
 export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
-    const appStore = useStore();
+    const appStore = useRootStore();
     const { photo_200, city, first_name, last_name } = { ...fetchedUser };
     const routeNavigator = useRouteNavigator();
+    const [upcomingWorkouts, setUpcomingWorkouts] = useState<Workout[]>([]);
+    const [userWorkouts, setUserWorkouts] = useState<Workout[]>([])
 
-    // Initialize app store if needed
     useEffect(() => {
-        if (!appStore.isInitialized) {
-            // appStore.initialize(); // убираем вызов приватного метода
-        }
+        const loadWorkouts = async () => {
+            const workouts = await appStore.getUserWorkouts();
+            setUserWorkouts(workouts);
+            const filtered = workouts
+                .filter((workout: any) => {
+                    // Показываем только будущие тренировки
+                    return new Date(workout.date) >= new Date();
+                })
+                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .slice(0, 3);
+            setUpcomingWorkouts(filtered);
+        };
+        loadWorkouts();
     }, [appStore]);
-
-    const upcomingWorkouts = appStore.getUserWorkouts()
-        .filter((workout: any) => {
-            // Показываем только будущие тренировки
-            return new Date(workout.date) >= new Date();
-        })
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 3);
 
     const handleCreateWorkout = () => {
         routeNavigator.push("/create");
@@ -59,13 +62,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
     };
     return (
         <Panel id={id}>
-            <PanelHeader
-                after={
-                    <PanelHeaderButton onClick={appStore.toggleTheme} aria-label="Переключить тему">
-                        {appStore.theme === "dark" ? <Icon28SunOutline /> : <Icon28MoonOutline />}
-                    </PanelHeaderButton>
-                }
-            >
+            <PanelHeader>
                 <span className="train-sync-gradient-text">TrainSync</span>
             </PanelHeader>
 
@@ -171,7 +168,7 @@ export const Home: FC<HomeProps> = observer(({ id, fetchedUser }) => {
                 <Div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                         <div className="stats-card">
-                            <div className="stats-number">{appStore.getUserWorkouts().length}</div>
+                            <div className="stats-number">{userWorkouts.length}</div>
                             <div className="stats-label">Всего тренировок</div>
                         </div>
                         <div className="stats-card">

@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import {
     Panel,
     PanelHeader,
@@ -22,7 +22,7 @@ import { FriendCard } from "../components/FriendCard";
 import { Event } from "../components/Event";
 import { WorkoutInvitations } from "../components/invitation/WorkoutInvitations";
 import { UserLeaderboardPosition } from "../components/UserLeaderboardPosition";
-import { useStore } from "../stores/StoreContext";
+import { useRootStore } from "../store/RootStoreContext";
 import { UserInfo } from "@vkontakte/vk-bridge";
 import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
 
@@ -31,18 +31,24 @@ export interface ProfileProps extends NavIdProps {
 }
 
 export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
-    const store = useStore();
+    const store = useRootStore();
     const routeNavigator = useRouteNavigator();
     const [friendSearch, setFriendSearch] = useState("");
     const [friendFilter, setFriendFilter] = useState("all");
     const [isEditingGym, setIsEditingGym] = useState(false);
-    const [newMainGym, setNewMainGym] = useState((store.currentUser as any)?.settings?.preferences?.defaultGym || "");
+    const [newMainGym, setNewMainGym] = useState(store.user?.gym || "");
+
+    useEffect(() => {
+        // Загружаем друзей при монтировании компонента
+        store.loadFriends();
+    }, [store]);
 
     const { photo_200, first_name, last_name } = { ...fetchedUser };
 
     const handleSaveMainGym = () => {
         if (newMainGym.trim()) {
-            store.setMainGym(newMainGym.trim());
+            // TODO: добавить метод setMainGym в RootStore
+            console.log('Save main gym:', newMainGym.trim());
             setIsEditingGym(false);
         } else {
             alert("Введите название спортзала");
@@ -50,7 +56,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     };
 
     const getPersonalizedGreeting = () => {
-        const user = store.currentUser;
+        const user = store.user;
         if (!user) return "Добро пожаловать!";
         console.log(user.id);
         const timeOfDay = new Date().getHours();
@@ -68,26 +74,10 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     };
 
     const getUserLevel = () => {
-        const currentUser = store.currentUser as any;
+        const currentUser = store.user;
 
-        if (currentUser?.settings?.preferences?.level) {
-            switch (currentUser.settings.preferences.level) {
-                case "beginner":
-                    return "Новичок";
-                case "amateur":
-                    return "Любитель";
-                case "intermediate":
-                    return "Средний";
-                case "advanced":
-                    return "Продвинутый";
-                case "expert":
-                    return "Эксперт";
-                default:
-                    return "Новичок";
-            }
-        }
-
-        const totalWorkouts = currentUser?.stats?.totalWorkouts || store.getUserWorkouts().length || 0;
+        // Пока используем простую логику на основе количества тренировок
+        const totalWorkouts = store.workouts.filter(w => w.createdBy === currentUser?.vkId.toString()).length;
         if (totalWorkouts < 10) return "Новичок";
         if (totalWorkouts < 50) return "Любитель";
         if (totalWorkouts < 100) return "Продвинутый";
@@ -95,7 +85,8 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     };
 
     const getMostVisitedGym = () => {
-        const gymCounts = store.getUserWorkouts().reduce((acc: any, workout: any) => {
+        const userWorkouts = store.workouts.filter(w => w.createdBy === store.user?.vkId.toString());
+        const gymCounts = userWorkouts.reduce((acc: any, workout: any) => {
             if (workout.location) {
                 acc[workout.location] = (acc[workout.location] || 0) + 1;
             }
@@ -107,22 +98,24 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
     };
 
     const getCompletedWorkoutsCount = () => {
-        return store.getUserWorkouts().filter((workout: any) => workout.status === "completed" || workout.completedAt)
-            .length;
+        return store.workouts.filter((workout: any) => 
+            (workout.status === "completed" || workout.completedAt) && 
+            workout.createdBy === store.user?.vkId.toString()
+        ).length;
     };
 
     const getRecentWorkouts = () => {
-        return store
-            .getUserWorkouts()
+        return store.workouts
             .filter((workout: any) => {
-                return new Date(workout.date) <= new Date();
+                return new Date(workout.date) <= new Date() && 
+                       workout.createdBy === store.user?.vkId.toString();
             })
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5);
     };
 
     const filteredFriends = store.friends.filter((friend: any) => {
-        const matchesSearch = `${friend.first_name} ${friend.last_name}`
+        const matchesSearch = `${friend.firstName} ${friend.lastName}`
             .toLowerCase()
             .includes(friendSearch.toLowerCase());
 
@@ -154,12 +147,12 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                 <Avatar size={64} src={photo_200} />
                                 <div>
                                     <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
-                                        {store.currentUser?.firstName || first_name}{" "}
-                                        {store.currentUser?.lastName || last_name}
+                                        {store.user?.firstName || first_name}{" "}
+                                        {store.user?.lastName || last_name}
                                     </div>
                                     <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>
                                         Основной зал:{" "}
-                                        {(store.currentUser as any)?.settings?.preferences?.defaultGym || "Не выбран"}
+                                        {store.user?.gym || "Не выбран"}
                                     </div>
                                     <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>
                                         Самый частый зал: {getMostVisitedGym()}
@@ -193,7 +186,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                         marginBottom: 8,
                                     }}
                                 >
-                                    {(store.currentUser as any)?.stats?.totalWorkouts || store.getUserWorkouts().length}
+                                    {store.workouts.filter(w => w.createdBy === store.user?.vkId.toString()).length}
                                 </div>
                                 <div style={{ fontSize: 14, opacity: 0.7 }}>Всего тренировок</div>
                             </Div>
@@ -208,8 +201,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                         marginBottom: 8,
                                     }}
                                 >
-                                    {(store.currentUser as any)?.stats?.completedWorkouts ||
-                                        getCompletedWorkoutsCount()}
+                                    {getCompletedWorkoutsCount()}
                                 </div>
                                 <div style={{ fontSize: 14, opacity: 0.7 }}>Завершенных тренировок</div>
                             </Div>
@@ -306,7 +298,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                             onClick={() => {
                                                 setIsEditingGym(false);
                                                 setNewMainGym(
-                                                    (store.currentUser as any)?.settings?.preferences?.defaultGym || ""
+                                                    store.user?.gym || ""
                                                 );
                                             }}
                                         >
@@ -322,7 +314,7 @@ export const Profile: FC<ProfileProps> = observer(({ id, fetchedUser }) => {
                                         }}
                                     >
                                         <Text style={{ fontSize: 14 }}>
-                                            {(store.currentUser as any)?.settings?.preferences?.defaultGym ||
+                                            {store.user?.gym ||
                                                 "Не выбран"}
                                         </Text>
                                         <Button mode="secondary" size="s" onClick={() => setIsEditingGym(true)}>

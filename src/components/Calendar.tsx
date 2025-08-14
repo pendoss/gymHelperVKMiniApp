@@ -2,17 +2,17 @@ import { FC, useState } from 'react';
 import { Div, Text, Card, IconButton } from '@vkontakte/vkui';
 import { Icon28ChevronLeftOutline, Icon28ChevronRightOutline } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../stores/StoreContext';
 import { DayModal } from './DayModal';
-import { Workout } from '../types/api';
 import './Calendar.css';
+import { rootStore, useRootStore } from '../store/RootStoreContext';
+import { Workout } from '../store/RootStore';
 
 interface CalendarProps {
   onDateSelect?: (date: Date) => void;
 }
 
 export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
-  const appStore = useStore();
+  const appStore = useRootStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDateForModal, setSelectedDateForModal] = useState<Date | null>(null);
@@ -40,18 +40,18 @@ export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
   };
 
   const hasWorkoutOnDate = (date: Date) => {
-    return appStore.getUserWorkouts().some((workout: Workout) => {
+    return rootStore.workouts.some((workout: Workout) => {
       const workoutDate = new Date(workout.date);
       return workoutDate.toDateString() === date.toDateString();
     });
   };
 
-  const getWorkoutsForDate = (date: Date) => {
-    return appStore.getUserWorkouts().filter((workout: Workout) => {
-      const workoutDate = new Date(workout.date);
-      return workoutDate.toDateString() === date.toDateString();
-    });
-  };
+  // const getWorkoutsForDate = async (date: Date) => {
+  //   return (await appStore.getUserWorkouts()).filter((workout: Workout) => {
+  //     const workoutDate = new Date(workout.date);
+  //     return workoutDate.toDateString() === date.toDateString();
+  //   });
+  // };
 
   const handleDateClick = (date: Date) => {
     setSelectedDateForModal(date);
@@ -128,7 +128,11 @@ export const Calendar: FC<CalendarProps> = observer(({ onDateSelect }) => {
         {showDayModal && selectedDateForModal && (
           <DayModal
             date={selectedDateForModal}
-            workouts={getWorkoutsForDate(selectedDateForModal)}
+            workouts={appStore.workouts.filter((workout: Workout) => {
+              const workoutDate = new Date(workout.date);
+              return workoutDate.toDateString() === selectedDateForModal.toDateString() && 
+               +workout.createdBy === appStore.user?.id;
+            })}
             onClose={() => setShowDayModal(false)}
           />
         )}

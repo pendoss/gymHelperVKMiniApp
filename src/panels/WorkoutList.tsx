@@ -1,23 +1,23 @@
 import { FC, useState } from "react";
 import { Panel, PanelHeader, Group, Div, Search, SegmentedControl, NavIdProps, Spacing, Button } from "@vkontakte/vkui";
 import { WorkoutCard } from "../components/WorkoutCard";
-import { useStore } from "../stores/StoreContext";
+import { useRootStore } from "../store/RootStoreContext";
 import { useRouteNavigator } from "@vkontakte/vk-mini-apps-router";
 import { observer } from "mobx-react-lite";
+import { Workout } from "../store/RootStore";
 
 export interface WorkoutListProps extends NavIdProps {}
 
 export const WorkoutList: FC<WorkoutListProps> = observer(({ id }) => {
-    const store = useStore();
+    const store = useRootStore();
     const [searchValue, setSearchValue] = useState("");
     const [filter, setFilter] = useState("all");
     const routeNavigator = useRouteNavigator();
 
     const now = new Date();
 
-    const filteredWorkouts = store
-        .getUserWorkouts()
-        .filter((workout) => {
+    const filteredWorkouts = store.workouts
+        .filter((workout: Workout) => {
             const matchesSearch =
                 workout.title.toLowerCase().includes(searchValue.toLowerCase()) ||
                 workout.location?.toLowerCase().includes(searchValue.toLowerCase());
@@ -33,7 +33,7 @@ export const WorkoutList: FC<WorkoutListProps> = observer(({ id }) => {
                     return true;
             }
         })
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const handleAddWorkout = () => {
         routeNavigator.push("/create");
@@ -76,7 +76,7 @@ export const WorkoutList: FC<WorkoutListProps> = observer(({ id }) => {
                         </div>
                     ) : (
                         <div>
-                            {filteredWorkouts.map((workout) => (
+                            {filteredWorkouts.map((workout: any) => (
                                 <WorkoutCard key={workout.id} workout={workout as any} />
                             ))}
                         </div>

@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import {
   Group,
   Header,
@@ -15,24 +15,32 @@ import {
 } from '@vkontakte/vkui';
 import { Icon28CrownOutline } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../stores/StoreContext';
+
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { getUserStats, getMedalIcon, getPositionColor } from '../utils/leaderboardUtils';
+import { useRootStore } from '../store/RootStoreContext';
 
 interface LeaderboardProps {
   className?: string;
 }
 
 export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
-  const store = useStore();
+  const store = useRootStore();
   const routeNavigator = useRouteNavigator();
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
+  
+  // Загружаем тренировки при монтировании компонента
+  useEffect(() => {
+    if (store.user && store.workouts.length === 0) {
+      store.loadWorkouts();
+    }
+  }, [store.user]);
   
   const leaderboardData = getUserStats(store);
   const topLeaders = leaderboardData.slice(0, 3);
   const fullLeaderboard = leaderboardData;
-  const currentUserPosition = store.currentUser 
-    ? leaderboardData.find(user => String(user.id) === String(store.currentUser!.id))
+  const currentUserPosition = store.user 
+    ? leaderboardData.find((user: any) => String(user.id) === String(store.user!.id))
     : null;
   
   // Если нет данных для отображения, показываем заглушку
@@ -178,8 +186,8 @@ export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
       >
         <Group>
           <Div>
-            {fullLeaderboard.map((user) => {
-              const isCurrentUser = !!(store.currentUser && String(user.id) === String(store.currentUser.id));
+            {fullLeaderboard.map((user: any) => {
+              const isCurrentUser = !!(store.user && String(user.id) === String(store.user.id));
               return renderUserCell(user, isCurrentUser);
             })}
           </Div>
@@ -217,8 +225,8 @@ export const Leaderboard: FC<LeaderboardProps> = observer(({ className }) => {
             </Text>
           </div>
           
-          {topLeaders.map((user) => {
-            const isCurrentUser = !!(store.currentUser && String(user.id) === String(store.currentUser.id));
+          {topLeaders.map((user: any) => {
+            const isCurrentUser = !!(store.user && String(user.id) === String(store.user.id));
             return renderUserCell(user, isCurrentUser);
           })}
           

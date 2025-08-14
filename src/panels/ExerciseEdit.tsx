@@ -25,20 +25,20 @@ import {
   Icon28VideoOutline,
 } from '@vkontakte/icons';
 import { observer } from 'mobx-react-lite';
-import { useStore } from '../stores/StoreContext';
+import { useRootStore } from '../store/RootStoreContext';
 import { useRouteNavigator, useParams } from '@vkontakte/vk-mini-apps-router';
-import { Exercise, ExerciseSet, ExerciseStep, ExerciseRecommendation } from '../types/api';
+import { Exercise, ExerciseSet } from '../store/RootStore';
 
 export interface ExerciseEditProps extends NavIdProps {}
 
 export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
-  const store = useStore();
+  const store = useRootStore();
   const routeNavigator = useRouteNavigator();
   const params = useParams<'exerciseId'>();
 
   // Получаем ID упражнения из параметров роута (если редактируем)
   const exerciseId = params?.exerciseId;
-  const existingExercise: Exercise | undefined = exerciseId ? store.exercises.exercises.find((e: Exercise) => e.id === parseInt(exerciseId)) : undefined;
+  const existingExercise: Exercise | undefined = exerciseId ? store.exercises.find((e: Exercise) => e.id === parseInt(exerciseId)) : undefined;
   const isEditing = !!existingExercise;
 
   const [exerciseName, setExerciseName] = useState(existingExercise?.name || '');
@@ -48,9 +48,11 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   const [restTime, setRestTime] = useState(existingExercise?.restTime?.toString() || '');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [steps, setSteps] = useState<ExerciseStep[]>(existingExercise?.steps || []);
-  const [recommendations, setRecommendations] = useState<ExerciseRecommendation[]>(existingExercise?.recommendations || []);
+  const [steps, setSteps] = useState<string[]>(existingExercise?.steps || []);
+  const [recommendations, setRecommendations] = useState<string[]>(existingExercise?.recommendations || []);
   const [sets, setSets] = useState<ExerciseSet[]>([]);
+  const [newStep, setNewStep] = useState('');
+  const [newRecommendation, setNewRecommendation] = useState('');
 
   // Инициализация данных при редактировании
   useEffect(() => {
@@ -67,7 +69,7 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
     }
   }, [existingExercise]);
   
-  const existingCategories = [...new Set(store.exercises.exercises.map((ex: Exercise) => ex.muscleGroup).flat())];
+  const existingCategories = [...new Set(store.exercises.map((ex: Exercise) => ex.muscleGroup).flat())] as string[];
   const defaultCategories = [
     'Грудь',
     'Спина', 
@@ -80,9 +82,9 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
     'Икры',
     'Предплечья',
   ];
-  const uniqueCategories = [...new Set([...existingCategories, ...defaultCategories])].sort();
+  const uniqueCategories = [...new Set([...existingCategories, ...defaultCategories])].sort() as string[];
   
-  const existingEquipment = [...new Set(store.exercises.exercises.flatMap((ex: Exercise) => ex.equipment || []))];
+  const existingEquipment = [...new Set(store.exercises.flatMap((ex: Exercise) => ex.equipment || []))] as string[];
   const defaultEquipment = [
     'Штанга',
     'Гантели',
@@ -95,7 +97,7 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
     'Коврик',
     'Беговая дорожка',
   ];
-  const uniqueEquipment = [...new Set([...existingEquipment, ...defaultEquipment])].sort();
+  const uniqueEquipment = [...new Set([...existingEquipment, ...defaultEquipment])].sort() as string[];
 
   const [customCategory, setCustomCategory] = useState('');
   const [customEquipment, setCustomEquipment] = useState('');
@@ -152,40 +154,33 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
   };
 
   const addStep = () => {
-    const newStep: ExerciseStep = {
-      id: Date.now(),
-      stepNumber: steps.length + 1,
-      description: '',
-    };
-    setSteps([...steps, newStep]);
+    if (newStep.trim()) {
+      setSteps([...steps, newStep.trim()]);
+      setNewStep('');
+    }
   };
 
-  const removeStep = (stepId: number) => {
-    setSteps(steps.filter(step => step.id !== stepId));
+  const removeStep = (index: number) => {
+    setSteps(steps.filter((_, i) => i !== index));
   };
 
-  const updateStep = (stepId: number, description: string) => {
-    setSteps(steps.map(step => 
-      step.id === stepId ? { ...step, description } : step
-    ));
+  const updateStep = (index: number, description: string) => {
+    setSteps(steps.map((step, i) => i === index ? description : step));
   };
 
   const addRecommendation = () => {
-    const newRecommendation: ExerciseRecommendation = {
-      id: Date.now(),
-      text: '',
-    };
-    setRecommendations([...recommendations, newRecommendation]);
+    if (newRecommendation.trim()) {
+      setRecommendations([...recommendations, newRecommendation.trim()]);
+      setNewRecommendation('');
+    }
   };
 
-  const removeRecommendation = (recommendationId: number) => {
-    setRecommendations(recommendations.filter(rec => rec.id !== recommendationId));
+  const removeRecommendation = (index: number) => {
+    setRecommendations(recommendations.filter((_, i) => i !== index));
   };
 
-  const updateRecommendation = (recommendationId: number, text: string) => {
-    setRecommendations(recommendations.map(rec => 
-      rec.id === recommendationId ? { ...rec, text } : rec
-    ));
+  const updateRecommendation = (index: number, text: string) => {
+    setRecommendations(recommendations.map((rec, i) => i === index ? text : rec));
   };
 
   const handleVideoFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,7 +191,7 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!exerciseName.trim()) {
       alert('Введите название упражнения');
       return;
@@ -216,14 +211,14 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
       description,
       muscleGroup: categories,
       equipment,
-      instructions: '',
+      instructions: description ? [description] : [],
       restTime: restTime ? parseInt(restTime) : undefined,
       minWeight,
       maxWeight,
       videoUrl: videoUrl || undefined,
-      videoFile: videoFile || undefined,
-      steps: steps.filter(step => step.description.trim() !== ''),
-      recommendations: recommendations.filter(rec => rec.text.trim() !== ''),
+      videoFile: videoFile ? URL.createObjectURL(videoFile) : undefined,
+      steps: steps.filter(step => step.trim() !== ''),
+      recommendations: recommendations.filter(rec => rec.trim() !== ''),
       defaultSets: sets.length > 0 ? sets.map(set => ({
         id: set.id,
         reps: set.reps,
@@ -231,18 +226,14 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
         duration: set.duration,
         distance: set.distance
       })) : undefined,
-      createdBy: 1,
-      createdAt: existingExercise?.createdAt || new Date(),
+      createdBy: store.user?.vkId.toString() || '1',
+      createdAt: existingExercise?.createdAt || new Date().toISOString(),
     };
 
     if (isEditing && exerciseId) {
-      store.updateExercise(exerciseId, exerciseData);
+      await store.updateExercise(parseInt(exerciseId), exerciseData);
     } else {
-      const newExercise = {
-        id: Date.now().toString(),
-        ...exerciseData,
-      };
-      store.addExercise(newExercise);
+      await store.createExercise(exerciseData);
     }
 
     routeNavigator.back();
@@ -459,12 +450,12 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
           </Div>
         ) : (
           steps.map((step, index) => (
-            <Card key={step.id} mode="outline" style={{ margin: '8px 16px' }}>
+            <Card key={index} mode="outline" style={{ margin: '8px 16px' }}>
               <Div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Text weight="2">Шаг {index + 1}</Text>
                   <IconButton
-                    onClick={() => removeStep(step.id)}
+                    onClick={() => removeStep(index)}
                     style={{ color: '#F44336' }}
                     aria-label={`Удалить шаг ${index + 1}`}
                   >
@@ -473,8 +464,8 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
                 </div>
                 <FormItem>
                   <Textarea
-                    value={step.description}
-                    onChange={(e) => updateStep(step.id, e.target.value)}
+                    value={step}
+                    onChange={(e) => updateStep(index, e.target.value)}
                     placeholder="Описание шага..."
                     rows={3}
                   />
@@ -523,12 +514,12 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
           </Div>
         ) : (
           recommendations.map((recommendation, index) => (
-            <Card key={recommendation.id} mode="outline" style={{ margin: '8px 16px' }}>
+            <Card key={index} mode="outline" style={{ margin: '8px 16px' }}>
               <Div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Text weight="2">Рекомендация {index + 1}</Text>
                   <IconButton
-                    onClick={() => removeRecommendation(recommendation.id)}
+                    onClick={() => removeRecommendation(index)}
                     style={{ color: '#F44336' }}
                     aria-label={`Удалить рекомендацию ${index + 1}`}
                   >
@@ -537,8 +528,8 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
                 </div>
                 <FormItem>
                   <Textarea
-                    value={recommendation.text}
-                    onChange={(e) => updateRecommendation(recommendation.id, e.target.value)}
+                    value={recommendation}
+                    onChange={(e) => updateRecommendation(index, e.target.value)}
                     placeholder="Текст рекомендации..."
                     rows={2}
                   />
@@ -547,6 +538,18 @@ export const ExerciseEdit: FC<ExerciseEditProps> = observer(({ id }) => {
             </Card>
           ))
         )}
+        
+        <Div>
+          <FormItem>
+            <Textarea
+              value={newRecommendation}
+              onChange={(e) => setNewRecommendation(e.target.value)}
+              placeholder="Добавить новую рекомендацию..."
+              rows={2}
+            />
+          </FormItem>
+        </Div>
+        
         <div style={{display:"flex", justifyContent:"center"}}>
           <IconButton
               onClick={addRecommendation}

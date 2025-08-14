@@ -11,10 +11,11 @@ import {
   Spacing,
 } from '@vkontakte/vkui';
 import { Icon28AddOutline, Icon28EditOutline, Icon28DeleteOutline } from '@vkontakte/icons';
-import { Workout } from '../types/api';
-import { useStore } from '../stores/StoreContext';
+
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { observer } from 'mobx-react-lite';
+import { Workout } from '../store/RootStore';
+import { useRootStore } from '../store/RootStoreContext';
 
 interface DayModalProps {
   date: Date;
@@ -23,7 +24,7 @@ interface DayModalProps {
 }
 
 export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }) => {
-  const store = useStore();
+  const store = useRootStore();
   const routeNavigator = useRouteNavigator();
   const [deleteAlert, setDeleteAlert] = useState<{
     show: boolean;
@@ -64,7 +65,7 @@ export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }
 
     try {
       setIsDeleting(true);
-      const success = await store.workouts.deleteWorkout(deleteAlert.workoutId);
+      const success = await store.deleteWorkout(deleteAlert.workoutId);
       
       if (success) {
         // Закрываем alert и основное модальное окно
@@ -145,7 +146,7 @@ export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {workout.participants.map((participant) => (
                             <div
-                              key={participant.userId}
+                              key={participant.id}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -156,9 +157,9 @@ export const DayModal: FC<DayModalProps> = observer(({ date, workouts, onClose }
                                 fontSize: 12
                               }}
                             >
-                              <Avatar size={20} src={participant.user.photo_200} />
+                              <Avatar size={20} src={participant.photo} />
                               <Text style={{ fontSize: 12 }}>
-                                {participant.user.first_name} {participant.user.last_name}
+                                {participant.firstName} {participant.lastName}
                               </Text>
                             </div>
                           ))}

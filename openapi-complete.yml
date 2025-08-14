@@ -1,0 +1,1295 @@
+openapi: '3.0.3'
+info:
+  title: GymHelper VK Mini App API
+  description: API для мини-приложения GymHelper в VKontakte. Приложение для управления тренировками, упражнениями и социальными функциями.
+  version: '2.0.0'
+  contact:
+    name: GymHelper Support
+    email: support@gymhelper.app
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.gymhelper.local/v1
+    description: Production server
+  - url: https://api-dev.gymhelper.local/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - VKAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/vk:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate with VK
+      description: Аутентификация пользователя через VK access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vk_access_token
+                - vk_user_id
+                - api_version
+              properties:
+                vk_access_token:
+                  type: string
+                  description: VK access token
+                  example: "vk1.a.abc123def456"
+                vk_user_id:
+                  type: integer
+                  description: VK user ID
+                  example: 12345678
+                api_version:
+                  type: string
+                  description: VK API version
+                  example: "5.199"
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "rt_abc123def456"
+                  expiresIn: 3600
+                  expiresAt: "2025-08-14T15:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Обновление access token используя refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  example: "rt_abc123def456"
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Получение профиля текущего пользователя
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                success: true
+                data:
+                  id: 1
+                  vkId: 12345678
+                  firstName: "Иван"
+                  lastName: "Иванов"
+                  photo: "https://sun9-74.userapi.com/photo.jpg"
+                  city: "Москва"
+                  isActive: true
+                  level: "intermediate"
+                  firstLogin: false
+                  createdAt: "2025-01-15T10:00:00Z"
+                  updatedAt: "2025-08-14T12:00:00Z"
+
+  /auth/profile:
+    patch:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Обновление профиля пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: "Александр"
+                lastName:
+                  type: string
+                  example: "Петров"
+                level:
+                  type: string
+                  enum: [beginner, intermediate, advanced, expert, amateur]
+                  example: "advanced"
+            example:
+              firstName: "Александр"
+              level: "advanced"
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Выход пользователя (инвалидация токенов)
+      responses:
+        '200':
+          description: Успешный выход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # Exercises endpoints
+  /exercises:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercises list
+      description: Получение списка упражнений с фильтрацией и пагинацией
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+          example: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+          example: "жим"
+          description: Поиск по названию упражнения
+        - name: muscleGroup
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["chest", "shoulders"]
+          description: Фильтр по группам мышц
+        - name: equipment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["barbell", "dumbbell"]
+          description: Фильтр по оборудованию
+        - name: createdBy
+          in: query
+          schema:
+            type: integer
+          example: 123
+          description: Фильтр по создателю упражнения
+      responses:
+        '200':
+          description: Список упражнений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExercisesListResponse'
+
+    post:
+      tags:
+        - Exercises
+      summary: Create exercise
+      description: Создание нового упражнения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExerciseRequest'
+      responses:
+        '201':
+          description: Упражнение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /exercises/{id}:
+    get:
+      tags:
+        - Exercises
+      summary: Get exercise by ID
+      description: Получение упражнения по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Информация об упражнении
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Workouts endpoints
+  /workouts:
+    get:
+      tags:
+        - Workouts
+      summary: Get workouts list
+      description: Получение списка тренировок с фильтрацией и пагинацией
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+          example: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [planned, in_progress, completed, cancelled]
+          example: "planned"
+        - name: participant
+          in: query
+          schema:
+            type: integer
+          example: 123
+          description: Фильтр по участнику
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2025-08-01"
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2025-08-31"
+      responses:
+        '200':
+          description: Список тренировок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutsListResponse'
+
+    post:
+      tags:
+        - Workouts
+      summary: Create workout
+      description: Создание новой тренировки
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkoutRequest'
+      responses:
+        '201':
+          description: Тренировка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /workouts/{id}:
+    get:
+      tags:
+        - Workouts
+      summary: Get workout by ID
+      description: Получение тренировки по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Информация о тренировке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workouts/{id}/start:
+    post:
+      tags:
+        - Workouts
+      summary: Start workout
+      description: Начать тренировку
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Тренировка начата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutResponse'
+
+  /workouts/{id}/complete:
+    post:
+      tags:
+        - Workouts
+      summary: Complete workout
+      description: Завершить тренировку
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - completedExercises
+                - duration
+              properties:
+                completedExercises:
+                  type: array
+                  items:
+                    type: string
+                  example: ["1", "2"]
+                duration:
+                  type: integer
+                  description: Фактическая длительность в минутах
+                  example: 85
+                notes:
+                  type: string
+                  example: "Отличная тренировка!"
+      responses:
+        '200':
+          description: Тренировка завершена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkoutResponse'
+
+  # Users endpoints
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      description: Получение профиля пользователя по ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 123
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/search:
+    get:
+      tags:
+        - Users
+      summary: Search users
+      description: Поиск пользователей по различным критериям
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          example: "Иван"
+          description: Поиск по имени
+        - name: city
+          in: query
+          schema:
+            type: string
+          example: "Москва"
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced, expert, amateur]
+          example: "intermediate"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          example: 20
+      responses:
+        '200':
+          description: Результаты поиска пользователей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PaginatedUsers'
+
+  /users/friends:
+    get:
+      tags:
+        - Users
+      summary: Get friends list
+      description: Получение списка друзей пользователя
+      responses:
+        '200':
+          description: Список друзей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  /users/leaderboard:
+    get:
+      tags:
+        - Users
+      summary: Get leaderboard
+      description: Получение таблицы лидеров
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year, all]
+            default: month
+          example: "month"
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum: [workouts, duration, exercises]
+            default: workouts
+          example: "workouts"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+          example: 10
+      responses:
+        '200':
+          description: Таблица лидеров
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user:
+                          $ref: '#/components/schemas/User'
+                        value:
+                          type: number
+                          example: 25
+                        rank:
+                          type: integer
+                          example: 1
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен доступа
+    VKAuth:
+      type: apiKey
+      in: header
+      name: VK-Access-Token
+      description: VK access token для аутентификации
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Неверный запрос"
+            errors: ["Поле 'name' обязательно для заполнения"]
+            
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Токен не валиден или отсутствует"
+            
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Недостаточно прав для выполнения операции"
+            
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Ресурс не найден"
+            
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Внутренняя ошибка сервера"
+
+  schemas:
+    # Common schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Операция выполнена успешно"
+          
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Произошла ошибка"
+        errors:
+          type: array
+          items:
+            type: string
+          example: ["Поле обязательно для заполнения"]
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 150
+        totalPages:
+          type: integer
+          example: 8
+        hasNext:
+          type: boolean
+          example: true
+        hasPrev:
+          type: boolean
+          example: false
+
+    # Authentication schemas
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          example: "rt_abc123def456"
+        expiresIn:
+          type: integer
+          description: Время жизни токена в секундах
+          example: 3600
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T15:30:00Z"
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/AuthTokens'
+
+    VKUserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12345678
+        first_name:
+          type: string
+          example: "Иван"
+        last_name:
+          type: string
+          example: "Иванов"
+        photo_200:
+          type: string
+          example: "https://sun9-74.userapi.com/photo.jpg"
+
+    VKUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/VKUserInfo'
+
+    # User schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        vkId:
+          type: integer
+          example: 12345678
+        firstName:
+          type: string
+          example: "Иван"
+        lastName:
+          type: string
+          example: "Иванов"
+        photo:
+          type: string
+          nullable: true
+          example: "https://sun9-74.userapi.com/photo.jpg"
+        city:
+          type: string
+          nullable: true
+          example: "Москва"
+        isActive:
+          type: boolean
+          example: true
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced, expert, amateur]
+          example: "intermediate"
+        firstLogin:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T12:00:00Z"
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/User'
+
+    PaginatedUsers:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Exercise schemas
+    Exercise:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        name:
+          type: string
+          example: "Жим штанги лежа"
+        description:
+          type: string
+          nullable: true
+          example: "Базовое упражнение для развития грудных мышц"
+        muscleGroup:
+          type: array
+          items:
+            type: string
+          example: ["chest", "shoulders", "triceps"]
+        equipment:
+          type: array
+          items:
+            type: string
+          example: ["barbell", "bench"]
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced, expert]
+          example: "intermediate"
+        instructions:
+          type: array
+          items:
+            type: string
+          example: ["Лягте на скамью", "Возьмите штангу хватом шире плеч", "Опустите штангу на грудь", "Выжмите штангу вверх"]
+        recommendations:
+          type: array
+          items:
+            type: string
+          nullable: true
+          example: ["Контролируйте движение", "Не отрывайте ягодицы от скамьи"]
+        imageUrl:
+          type: string
+          nullable: true
+          example: "https://cdn.gymhelper.app/exercises/1/image.jpg"
+        videoUrl:
+          type: string
+          nullable: true
+          example: "https://cdn.gymhelper.app/exercises/1/video.mp4"
+        restTime:
+          type: integer
+          nullable: true
+          description: Рекомендуемое время отдыха в секундах
+          example: 120
+        minWeight:
+          type: number
+          nullable: true
+          example: 20
+        maxWeight:
+          type: number
+          nullable: true
+          example: 200
+        createdBy:
+          type: integer
+          example: 1
+        isPublic:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+
+    ExerciseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Exercise'
+
+    ExercisesListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Exercise'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    CreateExerciseRequest:
+      type: object
+      required:
+        - name
+        - muscleGroup
+        - difficulty
+        - instructions
+      properties:
+        name:
+          type: string
+          example: "Приседания со штангой"
+        description:
+          type: string
+          example: "Базовое упражнение для ног"
+        muscleGroup:
+          type: array
+          items:
+            type: string
+          example: ["quads", "glutes", "hamstrings"]
+        equipment:
+          type: array
+          items:
+            type: string
+          example: ["barbell"]
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced, expert]
+          example: "intermediate"
+        instructions:
+          type: array
+          items:
+            type: string
+          example: ["Положите штангу на плечи", "Присядьте до параллели с полом", "Встаньте в исходное положение"]
+        recommendations:
+          type: array
+          items:
+            type: string
+          example: ["Держите спину прямой", "Колени не должны заходить за носки"]
+        restTime:
+          type: integer
+          example: 180
+        minWeight:
+          type: number
+          example: 20
+        maxWeight:
+          type: number
+          example: 300
+        isPublic:
+          type: boolean
+          example: true
+
+    # Workout schemas
+    ExerciseSet:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        reps:
+          type: integer
+          example: 10
+        weight:
+          type: number
+          nullable: true
+          example: 80.5
+        distance:
+          type: number
+          nullable: true
+          description: Дистанция в метрах (для кардио)
+          example: 1000
+        duration:
+          type: integer
+          nullable: true
+          description: Длительность в секундах
+          example: 30
+        restTime:
+          type: integer
+          nullable: true
+          description: Время отдыха в секундах
+          example: 60
+        completed:
+          type: boolean
+          example: false
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-15T18:45:00Z"
+        rpe:
+          type: integer
+          nullable: true
+          description: Rate of Perceived Exertion (1-10)
+          minimum: 1
+          maximum: 10
+          example: 8
+
+    WorkoutExercise:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        exerciseId:
+          type: string
+          example: "1"
+        exercise:
+          $ref: '#/components/schemas/Exercise'
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseSet'
+        order:
+          type: integer
+          example: 1
+        notes:
+          type: string
+          nullable: true
+          example: "Хорошее выполнение, увеличить вес в следующий раз"
+        completed:
+          type: boolean
+          example: false
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-15T18:00:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-15T18:15:00Z"
+        restTimeAfter:
+          type: integer
+          nullable: true
+          description: Время отдыха после упражнения в секундах
+          example: 180
+
+    WorkoutParticipant:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "1"
+        user:
+          $ref: '#/components/schemas/User'
+        status:
+          type: string
+          enum: [pending, accepted, declined, in_progress, completed]
+          example: "accepted"
+        invitedAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T10:00:00Z"
+        respondedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-14T12:00:00Z"
+
+    WorkoutInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        workoutId:
+          type: string
+          example: "1"
+        inviterId:
+          type: string
+          example: "1"
+        inviteeId:
+          type: string
+          example: "2"
+        status:
+          type: string
+          enum: [pending, accepted, declined, auto_declined, expired]
+          example: "pending"
+        message:
+          type: string
+          nullable: true
+          example: "Пойдем вместе потренируемся!"
+        respondedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-14T15:00:00Z"
+        autoDeclineAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-15T18:00:00Z"
+        notificationSent:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T12:00:00Z"
+
+    Workout:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        title:
+          type: string
+          example: "Тренировка груди"
+        description:
+          type: string
+          nullable: true
+          example: "Базовая тренировка грудных мышц"
+        date:
+          type: string
+          format: date-time
+          example: "2025-08-15T18:00:00Z"
+        startTime:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "18:00"
+        duration:
+          type: integer
+          nullable: true
+          description: Планируемая длительность в минутах
+          example: 90
+        status:
+          type: string
+          enum: [planned, in_progress, completed, cancelled]
+          example: "planned"
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutExercise'
+        createdBy:
+          type: string
+          example: "1"
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutParticipant'
+        invitations:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkoutInvitation'
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-08-15T19:30:00Z"
+        actualDuration:
+          type: integer
+          nullable: true
+          description: Фактическая длительность в минутах
+          example: 95
+        location:
+          type: string
+          nullable: true
+          example: "Спортзал 'Энергия'"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-08-14T10:00:00Z"
+
+    WorkoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Workout'
+
+    WorkoutsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Workout'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    CreateWorkoutRequest:
+      type: object
+      required:
+        - title
+        - date
+        - startTime
+        - exercises
+      properties:
+        title:
+          type: string
+          example: "Тренировка ног"
+        description:
+          type: string
+          example: "Базовая тренировка для ног"
+        date:
+          type: string
+          format: date-time
+          example: "2025-08-16T19:00:00Z"
+        startTime:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "19:00"
+        duration:
+          type: integer
+          description: Планируемая длительность в минутах
+          example: 75
+        exercises:
+          type: array
+          items:
+            type: object
+            required:
+              - exerciseId
+              - sets
+              - order
+            properties:
+              exerciseId:
+                type: string
+                example: "2"
+              sets:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - reps
+                  properties:
+                    reps:
+                      type: integer
+                      example: 12
+                    weight:
+                      type: number
+                      example: 100
+                    duration:
+                      type: integer
+                      example: 30
+                    restTime:
+                      type: integer
+                      example: 90
+              order:
+                type: integer
+                example: 1
+              notes:
+                type: string
+                example: "Контролировать технику"
+        location:
+          type: string
+          example: "Домашний зал"
+
+tags:
+  - name: Authentication
+    description: Аутентификация и управление токенами
+  - name: Users
+    description: Управление пользователями и социальными функциями
+  - name: Exercises
+    description: Управление упражнениями
+  - name: Workouts
+    description: Управление тренировками и приглашениями

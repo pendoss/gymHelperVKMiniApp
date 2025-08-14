@@ -22,9 +22,9 @@ import {
 } from '@vkontakte/icons';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { ExerciseCard } from './ExerciseCard';
-import { useStore } from '../stores/StoreContext';
+import { useRootStore } from '../store/RootStoreContext';
 import { observer } from 'mobx-react-lite';
-import type { Exercise, ExerciseSet } from '../types/api';
+import type { Exercise, ExerciseSet } from '../store/RootStore';
 
 export interface ExerciseSelectorProps {
   selectedExercises: { exerciseId: number; exercise: Exercise; sets: ExerciseSet[] }[];
@@ -36,7 +36,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
   selectedExercises,
   onExercisesChange
 }) => {
-  const appStore = useStore();
+  const appStore = useRootStore();
   const routeNavigator = useRouteNavigator();
   
   const [exerciseSearch, setExerciseSearch] = useState('');
@@ -46,7 +46,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
   const [selectedExistingSets, setSelectedExistingSets] = useState<ExerciseSet[]>([]);
   const [newSets, setNewSets] = useState<ExerciseSet[]>([{ id: 1, reps: 10, weight: 50 }]);
 
-  const filteredExercises = appStore.exercises.exercises.filter((exercise: Exercise) =>
+  const filteredExercises = appStore.exercises.filter((exercise: Exercise) =>
     exercise.name.toLowerCase().includes(exerciseSearch.toLowerCase()) &&
     !selectedExercises.find(selected => selected.exerciseId === exercise.id)
   );
@@ -55,7 +55,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
     setSelectedExerciseForSets(exercise);
     setShowSetModal(true);
     
-    const workoutsWithExercise = appStore.getUserWorkouts().filter((workout: any) => 
+    const workoutsWithExercise = appStore.workouts.filter((workout: any) => 
       workout.exercises.some((workoutExercise: any) => workoutExercise.exerciseId === exercise.id)
     );
     
@@ -67,7 +67,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
     }
     
     setSelectedExistingSets([]);
-    setNewSets([{ id: Date.now(), reps: 10, weight: 50 }]);
+    setNewSets([{ id: Date.now(), reps: 10, weight: 50}]);
   };
 
   const addNewSet = () => {
@@ -103,35 +103,14 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
   };
 
   const selectAllDefaultSets = () => {
-    if (!selectedExerciseForSets?.defaultSets) return;
-    
-    const allSelected = selectedExerciseForSets.defaultSets.every(set => 
-      selectedExistingSets.some(s => s.id === set.id)
-    );
-    
-    if (allSelected) {
-      // Убираем все defaultSets из выбранных
-      setSelectedExistingSets(prev => 
-        prev.filter(selected => 
-          !selectedExerciseForSets.defaultSets!.some(defaultSet => defaultSet.id === selected.id)
-        )
-      );
-    } else {
-      // Добавляем все defaultSets в выбранные
-      setSelectedExistingSets(prev => {
-        const newSets = selectedExerciseForSets.defaultSets!.filter(defaultSet => 
-          !prev.some(selected => selected.id === defaultSet.id)
-        );
-        return [...prev, ...newSets];
-      });
-    }
+    // Метод убран, так как defaultSets больше не используется
   };  const handleSetModalConfirm = () => {
     if (!selectedExerciseForSets) return;
     
     const finalSets = selectedMode === 'existing' ? selectedExistingSets : newSets;
     
     const newExercise = {
-      exerciseId: Number(selectedExerciseForSets.id),
+      exerciseId: selectedExerciseForSets.id,
       exercise: selectedExerciseForSets,
       sets: finalSets
     };
@@ -191,7 +170,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
         />
 
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {appStore.exercises.exercises.length === 0 ? (
+          {appStore.exercises.length === 0 ? (
             <Card mode="outline" style={{ 
               padding: 24, 
               textAlign: 'center',
@@ -285,7 +264,7 @@ export const ExerciseSelector: FC<ExerciseSelectorProps> = observer(({
             <Group header={<Header size="s">Выберите подходы</Header>}>
               <Div>
                 {(() => {
-                  const workoutsWithExercise = appStore.getUserWorkouts().filter((workout: any) => 
+                  const workoutsWithExercise = appStore.workouts.filter((workout: any) => 
                     workout.exercises.some((workoutExercise: any) => workoutExercise.exerciseId === selectedExerciseForSets.id)
                   );
                   

@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import {
     Panel,
     PanelHeader,
@@ -17,26 +17,27 @@ import { Icon28ArrowLeftOutline } from "@vkontakte/icons";
 import { observer } from "mobx-react-lite";
 import { FriendCard } from "../components/FriendCard";
 import { UserLeaderboardPosition } from "../components/UserLeaderboardPosition";
-import { useStore } from "../stores/StoreContext";
 import { useRouteNavigator, useParams } from "@vkontakte/vk-mini-apps-router";
+import { useRootStore } from "../store/RootStoreContext";
+import { Workout } from "../store/RootStore";
 
 export interface UserProfileProps extends NavIdProps {}
 
 export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
-    const store = useStore();
+    const store = useRootStore();
     const routeNavigator = useRouteNavigator();
     const params = useParams<'userId'>();
     const userId = Number(params?.userId);
-    
+    const [userWorkouts, setUserWorkouts] = useState<Workout[]>([]);
+    const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
     const [friendFilter, setFriendFilter] = useState("all");
 
-    // Находим пользователя среди друзей или создаем объект пользователя
     const user = store.friends.find((f: any) => f.id === userId) || 
                  (userId === Number(store.currentUser?.id) ? {
                      id: store.currentUser?.id,
-                     first_name: (store.currentUser as any)?.firstName,
-                     last_name: (store.currentUser as any)?.lastName,
-                     photo_200: (store.currentUser as any)?.photo,
+                     firstName: (store.currentUser as any)?.firstName,
+                     lastName: (store.currentUser as any)?.lastName,
+                     photo: (store.currentUser as any)?.photo,
                      isOnline: true,
                      gym: (store.currentUser as any)?.settings?.preferences?.defaultGym,
                      workoutsThisWeek: 0,
@@ -62,12 +63,22 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
         );
     }
 
-    const getUserWorkouts = () => {
-        return store.getUserWorkouts().filter((w: any) => w.createdBy === userId.toString());
-    };
+    useEffect(() => {
+        const fetchData = async () => {
+            const userWorkouts =  await store.getUserWorkouts();
+            setUserWorkouts(userWorkouts);
+            store.loadFriends(); // Загружаем друзей, если еще не загружены
+            setUserWorkouts(userWorkouts.filter((w: any) => w.createdBy === userId.toString()));
+            setRecentWorkouts(userWorkouts.filter((workout: any) => new Date(workout.date) <= new Date())
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5));
+        };
+        fetchData();
+    }, [store, userId]);
+
+
     
     const getUserAchievements = () => {
-        const userWorkouts = getUserWorkouts();
         const totalWorkouts = userWorkouts.length;
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
@@ -86,13 +97,6 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
         };
     };
 
-    const getRecentWorkouts = () => {
-        return getUserWorkouts()
-            .filter((workout: any) => new Date(workout.date) <= new Date())
-            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 5);
-    };
-
     const getUserFriends = () => {
         // В реальном приложении здесь был бы API запрос за друзьями пользователя
         // Пока возвращаем общий список друзей (кроме просматриваемого пользователя)
@@ -100,7 +104,6 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
     };
 
     const achievements = getUserAchievements();
-    const recentWorkouts = getRecentWorkouts();
     const userFriends = getUserFriends();
 
     const filteredFriends = userFriends.filter((friend: any) => {
@@ -129,9 +132,9 @@ export const UserProfile: FC<UserProfileProps> = observer(({ id }) => {
             <Group className="enhanced-group">
                 <Div>
                     <Card className="enhanced-card" style={{ padding: "24px", textAlign: "center" }}>
-                        <Avatar src={user.photo_200} size={80} style={{ margin: "0 auto 16px" }} />
+                        <Avatar src={user.photo} size={80} style={{ margin: "0 auto 16px" }} />
                         <Text weight="1" style={{ fontSize: 24, marginBottom: 8 }}>
-                            {user.first_name} {user.last_name}
+                            {user.firstName} {user.lastName}
                         </Text>
                         <Text weight="2" style={{ color: "var(--vkui--color_text_secondary)", marginBottom: 16 }}>
                             {user.gym || "Зал не указан"}

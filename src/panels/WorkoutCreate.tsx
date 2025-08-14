@@ -17,16 +17,16 @@ import {
 import { ExerciseSelector } from '../components/ExerciseSelector';
 import { FriendCard } from '../components/FriendCard';
 import { NavBar } from '../components/NavBar';
-import { useStore } from '../stores/StoreContext';
+import { useRootStore } from '../store/RootStoreContext';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
-import { Friend, WorkoutParticipant } from '../types';
-import { Exercise, ExerciseSet, WorkoutExercise } from '../types/api';
+import { Friend, WorkoutParticipantCompat } from '../store/RootStore';
+import { Exercise, ExerciseSet, WorkoutExercise } from '../store/RootStore';
 import { observer } from 'mobx-react-lite';
 
 export interface WorkoutCreateProps extends NavIdProps {}
 
 export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
-  const store = useStore();
+  const store = useRootStore();
   const routeNavigator = useRouteNavigator();
   const initialDate = store.selectedDate ? new Date(store.selectedDate) : new Date();
   const [title, setTitle] = useState('');
@@ -109,13 +109,13 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
         completed: false
       }));
 
-      const participants: WorkoutParticipant[] = selectedFriends.map((friend: any) => ({
+      const participants: WorkoutParticipantCompat[] = selectedFriends.map((friend: Friend) => ({
         userId: friend.id,
         user: {
           id: friend.id,
-          first_name: friend.first_name,
-          last_name: friend.last_name,
-          photo_200: friend.photo_200,
+          first_name: friend.firstName,
+          last_name: friend.lastName,
+          photo_200: friend.photo || '',
           level: 'amateur',
           firstLogin: false,
         },
@@ -134,10 +134,11 @@ export const WorkoutCreate: FC<WorkoutCreateProps> = observer(({ id }) => {
         exercises: workoutExercises,
         participants,
         invitations: [], // Пустой массив приглашений при создании
-        createdBy: String(store.currentUser?.id || 1),
+        createdBy: String(store.user?.id || 1),
         createdAt: new Date().toISOString(),
       };
 
+      // Сохраняем тренировку в хранилище
       store.addUserWorkout(workout);
       await new Promise(resolve => setTimeout(resolve, 500));
       
